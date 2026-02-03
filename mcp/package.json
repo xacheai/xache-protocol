@@ -1,0 +1,47 @@
+{
+  "name": "@xache/mcp-server",
+  "version": "0.3.0",
+  "description": "MCP server for Xache Protocol - collective intelligence, verifiable memory, extraction, and reputation for AI agents",
+  "main": "dist/index.js",
+  "bin": {
+    "xache-mcp": "./dist/index.js"
+  },
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "tsx src/index.ts"
+  },
+  "keywords": [
+    "mcp",
+    "xache",
+    "ai",
+    "agents",
+    "collective-intelligence",
+    "memory",
+    "extraction",
+    "blockchain",
+    "receipts",
+    "reputation"
+  ],
+  "author": "Xache Protocol",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/oliveskin/xache"
+  },
+  "homepage": "https://xache.xyz",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "@xache/sdk": "workspace:*",
+    "zod": "^3.22.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "tsx": "^4.7.0",
+    "typescript": "^5.3.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

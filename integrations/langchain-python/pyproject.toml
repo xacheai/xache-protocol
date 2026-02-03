@@ -1,0 +1,67 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "langchain-xache"
+version = "0.2.0"
+description = "LangChain integration for Xache Protocol - verifiable AI agent memory"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.9"
+authors = [
+    {name = "Xache Protocol", email = "dev@xache.xyz"}
+]
+keywords = [
+    "langchain",
+    "ai",
+    "agents",
+    "memory",
+    "blockchain",
+    "receipts",
+    "reputation",
+    "erc8004",
+    "x402",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+dependencies = [
+    "xache>=5.1.0",
+    "langchain>=0.1.0",
+    "pydantic>=2.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+    "black>=23.0.0",
+    "isort>=5.12.0",
+]
+
+[project.urls]
+Homepage = "https://xache.xyz"
+Documentation = "https://docs.xache.xyz"
+Repository = "https://github.com/oliveskin/xache"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["xache_langchain*"]
+
+[tool.black]
+line-length = 88
+target-version = ['py39', 'py310', 'py311', 'py312']
+
+[tool.isort]
+profile = "black"
+line_length = 88

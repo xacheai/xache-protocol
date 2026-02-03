@@ -1,0 +1,106 @@
+"""
+OpenClaw integration for Xache Protocol
+Collective intelligence, verifiable memory, and portable reputation for AI agents
+
+OpenClaw already has excellent local persistent memory via markdown files.
+Xache complements this with:
+
+1. **Collective Intelligence** - Share and query insights across agents
+2. **Verifiable Memory** - Store important memories with cryptographic receipts
+3. **Portable Reputation** - ERC-8004 reputation that travels with your agent
+4. **Cross-Instance Sync** - Sync memories across devices/deployments
+5. **Task Receipts** - Verifiable proof when performing tasks for others
+6. **Extraction** - Auto-extract heuristics from conversations and contribute to collective
+
+Example:
+    ```python
+    from openclaw import tool
+    from xache_openclaw import xache_tools, collective_contribute, collective_query
+
+    # Register Xache tools with OpenClaw
+    tools = xache_tools(
+        wallet_address="0x...",
+        private_key="0x..."
+    )
+
+    # Or use individual tools
+    @tool
+    def share_insight(insight: str, domain: str):
+        '''Share a valuable insight with the agent collective'''
+        return collective_contribute(insight, domain)
+
+    # Extract and auto-contribute learnings from conversations
+    from xache_openclaw import extract_and_contribute
+
+    result = extract_and_contribute(
+        trace=conversation_text,
+        llm=lambda p: my_llm.complete(p),
+        agent_context="research"
+    )
+    ```
+"""
+
+from .tools import (
+    # Tool factory
+    xache_tools,
+    create_xache_client,
+    # Individual tool functions
+    collective_contribute,
+    collective_query,
+    memory_store,
+    memory_retrieve,
+    check_reputation,
+    sync_to_xache,
+    # OpenClaw-ready tool classes
+    XacheCollectiveContributeTool,
+    XacheCollectiveQueryTool,
+    XacheMemoryStoreTool,
+    XacheMemoryRetrieveTool,
+    XacheReputationTool,
+    XacheSyncTool,
+)
+
+from .extraction import (
+    # Extraction functions
+    MemoryExtractor,
+    ExtractedMemory,
+    MemoryType,
+    extract_from_openclaw_memory,
+    extract_and_contribute,
+    # Extraction tool
+    XacheExtractionTool,
+)
+
+from .config import XacheConfig, get_config, set_config
+
+__version__ = "0.1.0"
+__all__ = [
+    # Config
+    "XacheConfig",
+    "get_config",
+    "set_config",
+    # Tool factory
+    "xache_tools",
+    "create_xache_client",
+    # Functions for direct use
+    "collective_contribute",
+    "collective_query",
+    "memory_store",
+    "memory_retrieve",
+    "check_reputation",
+    "sync_to_xache",
+    # Tool classes
+    "XacheCollectiveContributeTool",
+    "XacheCollectiveQueryTool",
+    "XacheMemoryStoreTool",
+    "XacheMemoryRetrieveTool",
+    "XacheReputationTool",
+    "XacheSyncTool",
+    # Extraction
+    "MemoryExtractor",
+    "ExtractedMemory",
+    "MemoryType",
+    "extract_from_openclaw_memory",
+    "extract_and_contribute",
+    "XacheExtractionTool",
+]

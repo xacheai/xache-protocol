@@ -1,0 +1,68 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "xache"
+version = "5.2.0"
+description = "Official Python SDK for Xache Protocol"
+readme = "README.md"
+requires-python = ">=3.8"
+license = {text = "MIT"}
+authors = [
+    {name = "Xache Protocol", email = "dev@xache.xyz"}
+]
+keywords = ["xache", "ai", "agent", "memory", "blockchain", "decentralized"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+dependencies = [
+    "aiohttp>=3.9.0",
+    "typing-extensions>=4.0.0",
+    "mnemonic>=0.20",
+    "eth-account>=0.10.0",
+    "bip-utils>=2.9.0",
+    "PyNaCl>=1.5.0",
+    "base58>=2.1.1",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.0.0",
+    "black>=23.0.0",
+    "mypy>=1.0.0",
+    "pylint>=2.17.0",
+]
+encryption = [
+    "PyNaCl>=1.5.0",
+]
+
+[project.urls]
+Homepage = "https://xache.xyz"
+Documentation = "https://docs.xache.xyz"
+Repository = "https://github.com/oliveskin/xache"
+"Bug Reports" = "https://github.com/oliveskin/xache/issues"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.mypy]
+python_version = "3.8"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+
+[tool.black]
+line-length = 100
+target-version = ['py38', 'py39', 'py310', 'py311']
