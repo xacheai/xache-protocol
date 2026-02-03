@@ -11,7 +11,7 @@ Official TypeScript SDK for [Xache Protocol](https://xache.xyz) - decentralized 
 ✅ **Multi-Facilitator** - Intelligent payment routing across facilitators (x402 v2)
 ✅ **Encryption** - Client-side encryption for memory storage
 ✅ **Error Handling** - Typed errors with automatic retry logic
-✅ **Budget Management** - Track and control spending limits
+✅ **Budget Management** - Track and control spending limits with alerts
 
 ## Installation
 
@@ -53,10 +53,13 @@ const memory = await client.memory.store({
     theme: 'dark',
     language: 'en',
   },
-  storageTier: 'hot',
+  storageTier: 'hot', // 'hot' | 'warm' | 'cold'
+  context: 'user-preferences', // optional: for organization
+  tags: ['settings'], // optional: for filtering
 });
 
 console.log('Storage Key:', memory.storageKey);
+console.log('Receipt ID:', memory.receiptId);
 
 // Retrieve memory (automatic decryption + 402 payment)
 const retrieved = await client.memory.retrieve({
@@ -65,20 +68,67 @@ const retrieved = await client.memory.retrieve({
 
 console.log('Data:', retrieved.data);
 
+// List memories (free)
+const list = await client.memory.list({
+  context: 'user-preferences',
+  limit: 20,
+});
+
+console.log('Total memories:', list.total);
+
 // Delete memory (free)
 await client.memory.delete(memory.storageKey);
+```
+
+### Batch Memory Operations
+
+```typescript
+// Store multiple memories in one request
+const batchResult = await client.memory.storeBatch({
+  items: [
+    { data: { key: 'value1' }, storageTier: 'hot' },
+    { data: { key: 'value2' }, storageTier: 'warm' },
+    { data: { key: 'value3' }, storageTier: 'cold' },
+  ],
+});
+
+console.log('Success:', batchResult.successCount);
+console.log('Failed:', batchResult.failureCount);
+
+// Retrieve multiple memories
+const retrieveResult = await client.memory.retrieveBatch({
+  storageKeys: ['mem_123', 'mem_456', 'mem_789'],
+});
 ```
 
 ### Collective Intelligence
 
 ```typescript
+import crypto from 'crypto';
+
+// Helper to hash pattern
+function hashPattern(pattern: string): string {
+  return crypto.createHash('sha256').update(pattern).digest('hex');
+}
+
 // Contribute a heuristic (automatic 402 payment)
+const pattern = 'Use async/await for cleaner async code in JavaScript';
+const patternHash = hashPattern(pattern);
+
 const heuristic = await client.collective.contribute({
-  pattern: 'Use async/await for cleaner async code in JavaScript',
+  pattern,
+  patternHash,
   domain: 'javascript',
   tags: ['async', 'best-practices', 'readability'],
-  contextType: 'code-review',
+  metrics: {
+    successRate: 0.85,
+    sampleSize: 10,
+    confidence: 0.9,
+  },
+  encryptedContentRef: patternHash,
 });
+
+console.log('Heuristic ID:', heuristic.heuristicId);
 
 // Query collective (automatic 402 payment)
 const results = await client.collective.query({
@@ -92,11 +142,19 @@ results.matches.forEach(match => {
   console.log(`Score: ${match.relevanceScore}`);
   console.log(`Royalty: $${match.royaltyAmount}`);
 });
+
+// List heuristics (free)
+const heuristics = await client.collective.listHeuristics({
+  domain: 'javascript',
+  limit: 20,
+});
 ```
 
 ### Budget Management
 
 ```typescript
+import { BudgetAlertLevel } from '@xache/sdk';
+
 // Check budget status
 const budget = await client.budget.getStatus();
 
@@ -109,7 +167,24 @@ console.log(`Usage: ${budget.percentageUsed.toFixed(1)}%`);
 await client.budget.updateLimit(5000); // $50/month
 
 // Check if you can afford an operation
-const canAfford = await client.budget.canAfford(100); // 100 cents = $1
+const canAfford = await client.budget.canAfford(100); // returns boolean
+if (canAfford) {
+  console.log('Operation is within budget');
+}
+
+// Register budget alert handler
+client.budget.onAlert((alert) => {
+  console.log(`Budget Alert: ${alert.level}`);
+  console.log(`Message: ${alert.message}`);
+  console.log(`Usage: ${alert.percentageUsed.toFixed(1)}%`);
+
+  if (alert.level === BudgetAlertLevel.CRITICAL_100) {
+    console.error('CRITICAL: Budget limit reached!');
+  }
+});
+
+// Check active alerts
+const activeAlerts = await client.budget.getActiveAlerts();
 ```
 
 ### Receipts & Analytics
@@ -127,6 +202,7 @@ receipts.receipts.forEach(receipt => {
 
 // Get Merkle proof for verification
 const proof = await client.receipts.getProof('receipt_abc123');
+console.log('Merkle Root:', proof.merkleRoot);
 
 // Get usage analytics
 const analytics = await client.receipts.getAnalytics({
@@ -135,6 +211,37 @@ const analytics = await client.receipts.getAnalytics({
 });
 
 console.log('Total spent:', analytics.totalSpent);
+
+// List blockchain anchors
+const anchors = await client.receipts.listAnchors({
+  from: '2024-01-01T00:00:00Z',
+  to: '2024-01-31T23:59:59Z',
+});
+
+anchors.anchors.forEach(anchor => {
+  console.log(`${anchor.hour}: ${anchor.receiptCount} receipts`);
+  if (anchor.dualAnchored) {
+    console.log('  ✓ Dual-anchored on Base and Solana');
+  }
+});
+```
+
+### Reputation
+
+```typescript
+// Get your agent's reputation
+const reputation = await client.reputation.getReputation();
+
+console.log('Overall Score:', reputation.overall);
+console.log('Memory Quality:', reputation.memoryQuality);
+console.log('Contribution Success:', reputation.contribSuccess);
+
+// Get top agents leaderboard
+const topAgents = await client.reputation.getTopAgents(10);
+
+topAgents.forEach((agent, i) => {
+  console.log(`${i + 1}. ${agent.agentDID}: ${agent.reputationScore}`);
+});
 ```
 
 ## Configuration
@@ -145,39 +252,10 @@ console.log('Total spent:', analytics.totalSpent);
 const client = new XacheClient({
   apiUrl: 'https://api.xache.xyz',
   did: 'did:agent:evm:0xYourWalletAddress',
-  privateKey: '0x...',
-  timeout: 30000, // Optional: request timeout in ms
+  privateKey: '0x...', // 64-char hex (EVM) or 128-char hex (Solana)
+  timeout: 30000, // Optional: request timeout in ms (default: 30000)
   debug: false,   // Optional: enable debug logging
 });
-```
-
-### Payment Configuration
-
-#### Manual Payment (Default)
-
-```typescript
-const client = new XacheClient({
-  // ... basic config
-  paymentProvider: {
-    type: 'manual',
-  },
-});
-
-// When payment is required, SDK will prompt you in console
-```
-
-#### Coinbase Commerce
-
-```typescript
-const client = new XacheClient({
-  // ... basic config
-  paymentProvider: {
-    type: 'coinbase-commerce',
-    apiKey: 'YOUR_COINBASE_API_KEY',
-  },
-});
-
-// Payments will be handled automatically via Coinbase Commerce
 ```
 
 ## Error Handling
@@ -192,6 +270,10 @@ import {
   RateLimitedError,
   BudgetExceededError,
   InvalidInputError,
+  ConflictError,
+  RetryLaterError,
+  InternalError,
+  NetworkError,
 } from '@xache/sdk';
 
 try {
@@ -200,10 +282,15 @@ try {
   if (error instanceof PaymentRequiredError) {
     console.log('Payment required:', error.amount);
     console.log('Challenge ID:', error.challengeId);
+    console.log('Pay to:', error.payTo);
   } else if (error instanceof RateLimitedError) {
     console.log('Rate limited. Retry at:', error.resetAt);
   } else if (error instanceof BudgetExceededError) {
     console.log('Budget exceeded');
+  } else if (error instanceof ConflictError) {
+    console.log('Resource conflict (409)');
+  } else if (error instanceof NetworkError) {
+    console.log('Network error:', error.originalError);
   }
 }
 ```
@@ -216,15 +303,20 @@ Main client class for interacting with Xache Protocol.
 
 #### Services
 
-- `client.identity` - Identity registration
-- `client.memory` - Memory storage and retrieval
-- `client.collective` - Collective intelligence marketplace
-- `client.budget` - Budget management
-- `client.receipts` - Receipt access and analytics
-- `client.reputation` - Agent reputation scores
-- `client.extraction` - Memory extraction from text
-- `client.facilitators` - Payment facilitator management (x402 v2)
-- `client.sessions` - Wallet session management (x402 v2)
+| Service | Description |
+|---------|-------------|
+| `client.identity` | Identity registration, updates, ownership claims |
+| `client.memory` | Memory storage, retrieval, batch operations |
+| `client.collective` | Collective intelligence marketplace |
+| `client.budget` | Budget management with alerts |
+| `client.receipts` | Receipt access, proofs, and analytics |
+| `client.reputation` | Agent reputation scores |
+| `client.extraction` | Memory extraction from text |
+| `client.facilitators` | Payment facilitator management (x402 v2) |
+| `client.sessions` | Wallet session management (x402 v2) |
+| `client.royalty` | Royalty earnings and payouts |
+| `client.workspaces` | Workspace management for teams |
+| `client.owner` | Owner registration and agent fleet management |
 
 ### Types
 
@@ -232,11 +324,41 @@ All request/response types are exported:
 
 ```typescript
 import type {
+  // Memory
   StoreMemoryRequest,
   StoreMemoryResponse,
+  RetrieveMemoryRequest,
+  RetrieveMemoryResponse,
+  BatchStoreMemoryRequest,
+  BatchRetrieveMemoryRequest,
+
+  // Collective
+  ContributeHeuristicRequest,
+  ContributeHeuristicResponse,
   QueryCollectiveRequest,
+  QueryCollectiveResponse,
+
+  // Budget
   BudgetStatus,
+  BudgetAlert,
+  BudgetAlertLevel,
+
+  // Receipts
   Receipt,
+  ReceiptWithProof,
+  UsageAnalytics,
+
+  // Reputation
+  ReputationSnapshot,
+
+  // Sessions (x402 v2)
+  WalletSession,
+  CreateSessionOptions,
+  SessionValidation,
+
+  // Facilitators (x402 v2)
+  FacilitatorConfig,
+  FacilitatorSelection,
 } from '@xache/sdk';
 ```
 
@@ -272,8 +394,19 @@ await client.memory.store({ data: { key: 'value' }, storageTier: 'hot' });
 const remaining = client.sessions.getRemainingBudget(session);
 console.log('Remaining:', remaining);
 
-// Revoke session when done
-await client.sessions.revoke(session.sessionId);
+// Validate session for specific operation
+const validation = await client.sessions.validate(
+  session.sessionId,
+  session.walletAddress, // walletAddress required for routing
+  { amount: '1000', scope: 'memory:store' }
+);
+
+if (validation.valid && validation.hasBudget) {
+  console.log('Session is valid with sufficient budget');
+}
+
+// Revoke session when done (walletAddress required)
+await client.sessions.revoke(session.sessionId, session.walletAddress);
 ```
 
 ### Facilitator Selection
@@ -300,23 +433,9 @@ const selection = await client.facilitators.select({
 
 if (selection) {
   console.log('Selected:', selection.facilitator.name);
-  console.log('Reason:', selection.reason);
+  console.log('Reason:', selection.reason); // 'preference' | 'priority' | 'latency' | 'fallback'
   console.log('Alternatives:', selection.alternatives.length);
 }
-```
-
-### x402 Protocol Version
-
-The SDK uses x402 v2 by default with the `PAYMENT-SIGNATURE` header. Legacy clients using v1 (`X-PAYMENT` header) are still supported for backward compatibility.
-
-```typescript
-// The SDK automatically uses v2 headers
-// No configuration needed for new clients
-
-// For advanced usage, access the payment handler
-const paymentHandler = client.getPaymentHandler();
-console.log('x402 Version:', paymentHandler.getVersion()); // 2
-console.log('Header Name:', paymentHandler.getPaymentHeaderName()); // 'PAYMENT-SIGNATURE'
 ```
 
 ## Advanced Usage
@@ -327,8 +446,8 @@ console.log('Header Name:', paymentHandler.getPaymentHeaderName()); // 'PAYMENT-
 // Set custom encryption key for memory
 client.memory.setEncryptionKey('your-base64-key');
 
-// Get encryption key for backup
-const key = client.memory.getEncryptionKey();
+// Get current encryption key for backup (async)
+const key = await client.memory.getCurrentEncryptionKey();
 ```
 
 ### Manual Request Signing
@@ -343,6 +462,27 @@ const headers = generateAuthHeaders(
   did,
   privateKey
 );
+```
+
+### Subject Keys (Multi-tenant Memory Isolation)
+
+```typescript
+// Derive pseudonymous subject ID from customer identifier
+const subjectId = await client.deriveSubjectId('customer_12345');
+
+// Store memory scoped to this subject
+await client.memory.store({
+  data: { preference: 'dark_mode' },
+  storageTier: 'hot',
+  subject: client.createSubjectContext(subjectId),
+});
+
+// Batch derive for multiple customers
+const subjectIds = await client.batchDeriveSubjectIds([
+  'customer_001',
+  'customer_002',
+  'customer_003',
+]);
 ```
 
 ## Development

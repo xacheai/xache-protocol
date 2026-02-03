@@ -1,6 +1,6 @@
 {
   "name": "@xache/mcp-server",
-  "version": "0.3.0",
+  "version": "0.3.3",
   "description": "MCP server for Xache Protocol - collective intelligence, verifiable memory, extraction, and reputation for AI agents",
   "main": "dist/index.js",
   "bin": {
@@ -28,12 +28,12 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/oliveskin/xache"
+    "url": "https://github.com/xacheai/xache-protocol"
   },
   "homepage": "https://xache.xyz",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.0",
-    "@xache/sdk": "workspace:*",
+    "@xache/sdk": "^5.2.3",
     "zod": "^3.22.0"
   },
   "devDependencies": {

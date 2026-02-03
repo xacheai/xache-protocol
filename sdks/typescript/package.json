@@ -1,6 +1,6 @@
 {
   "name": "@xache/sdk",
-  "version": "5.2.0",
+  "version": "5.2.3",
   "description": "Official TypeScript SDK for Xache Protocol - decentralized agent memory and collective intelligence",
   "main": "dist/index.cjs",
   "module": "dist/index.mjs",
@@ -40,8 +40,9 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/xache-ai/xache-protocol"
+    "url": "https://github.com/xacheai/xache-protocol"
   },
+  "homepage": "https://xache.xyz",
   "dependencies": {
     "@coinbase/x402": "^0.7.0",
     "@noble/curves": "^1.3.0",

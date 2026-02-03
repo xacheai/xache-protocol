@@ -226,7 +226,6 @@ Your crew builds reputation through quality contributions and payments. Enable E
 ## Resources
 
 - [Documentation](https://docs.xache.xyz)
-- [API Reference](https://docs.xache.xyz/api)
 - [GitHub](https://github.com/xacheai/xache-protocol)
 - [Website](https://xache.xyz)
 

@@ -159,7 +159,6 @@ Xache supports [ERC-8004](https://eips.ethereum.org/EIPS/eip-8004) for portable,
 ## Resources
 
 - [Documentation](https://docs.xache.xyz)
-- [API Reference](https://docs.xache.xyz/api)
 - [GitHub](https://github.com/xacheai/xache-protocol)
 - [Website](https://xache.xyz)
 

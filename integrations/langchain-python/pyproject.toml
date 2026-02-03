@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "langchain-xache"
-version = "0.2.0"
+version = "0.2.3"
 description = "LangChain integration for Xache Protocol - verifiable AI agent memory"
 readme = "README.md"
 license = {text = "MIT"}
@@ -52,7 +52,7 @@ dev = [
 [project.urls]
 Homepage = "https://xache.xyz"
 Documentation = "https://docs.xache.xyz"
-Repository = "https://github.com/oliveskin/xache"
+Repository = "https://github.com/xacheai/xache-protocol"
 
 [tool.setuptools.packages.find]
 where = ["."]

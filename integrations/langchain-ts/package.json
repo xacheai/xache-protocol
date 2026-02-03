@@ -1,6 +1,6 @@
 {
   "name": "@xache/langchain",
-  "version": "0.2.0",
+  "version": "0.2.3",
   "description": "LangChain.js integration for Xache Protocol - verifiable AI agent memory",
   "main": "dist/index.cjs",
   "module": "dist/index.mjs",
@@ -43,7 +43,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/oliveskin/xache"
+    "url": "https://github.com/xacheai/xache-protocol"
   },
   "homepage": "https://xache.xyz",
   "peerDependencies": {
@@ -51,7 +51,7 @@
     "langchain": ">=0.1.0"
   },
   "dependencies": {
-    "@xache/sdk": "workspace:*",
+    "@xache/sdk": "^5.2.3",
     "zod": "^3.22.0"
   },
   "devDependencies": {
