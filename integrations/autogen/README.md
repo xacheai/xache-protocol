@@ -258,8 +258,8 @@ Your agents build reputation through quality contributions and payments. Enable 
 
 - [Documentation](https://docs.xache.xyz)
 - [API Reference](https://docs.xache.xyz/api)
-- [GitHub](https://github.com/oliveskin/xache)
-- [Discord](https://discord.gg/xache)
+- [GitHub](https://github.com/xacheai/xache-protocol)
+- [Website](https://xache.xyz)
 
 ## License
 

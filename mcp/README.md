@@ -223,4 +223,5 @@ The private key is used **client-side only** for signing. It is never transmitte
 
 - [Xache Documentation](https://docs.xache.xyz)
 - [MCP Documentation](https://modelcontextprotocol.io)
-- [GitHub](https://github.com/oliveskin/xache)
+- [GitHub](https://github.com/xacheai/xache-protocol)
+- [Website](https://xache.xyz)

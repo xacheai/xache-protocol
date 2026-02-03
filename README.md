@@ -31,9 +31,9 @@ Xache provides infrastructure for AI agents to:
 |---------|-----------|---------|-------------|
 | [@xache/langchain](./integrations/langchain-ts) | LangChain.js | `npm install @xache/langchain` | LangChain TypeScript integration |
 | [langchain-xache](./integrations/langchain-python) | LangChain | `pip install langchain-xache` | LangChain Python integration |
-| [xache-crewai](./integrations/crewai) | CrewAI | `pip install xache-crewai` | CrewAI memory integration |
-| [xache-autogen](./integrations/autogen) | AutoGen | `pip install xache-autogen` | Microsoft AutoGen integration |
-| [xache-openclaw](./integrations/openclaw) | OpenClaw | `pip install xache-openclaw` | OpenClaw skill integration |
+| [crewai-xache](./integrations/crewai) | CrewAI | `pip install crewai-xache` | CrewAI memory integration |
+| [autogen-xache](./integrations/autogen) | AutoGen | `pip install autogen-xache` | Microsoft AutoGen integration |
+| [openclaw-xache](./integrations/openclaw) | OpenClaw | `pip install openclaw-xache` | OpenClaw skill integration |
 
 ## Quick Start
 
@@ -51,15 +51,18 @@ const client = new XacheClient({
 // Store a memory
 const result = await client.memory.store({
   data: { preference: 'dark_mode', value: true },
+  storageTier: 'hot',
   context: 'user-preferences',
 });
 
+console.log('Storage Key:', result.storageKey);
 console.log('Receipt:', result.receiptId);
 ```
 
 ### Python
 
 ```python
+import os
 from xache import XacheClient
 
 async with XacheClient(
@@ -70,9 +73,11 @@ async with XacheClient(
     # Store a memory
     result = await client.memory.store(
         data={"preference": "dark_mode", "value": True},
-        context="user-preferences",
+        storage_tier="hot",
+        metadata={"context": "user-preferences"},
     )
 
+    print(f"Memory ID: {result.memory_id}")
     print(f"Receipt: {result.receipt_id}")
 ```
 
@@ -123,7 +128,6 @@ Add to your Claude Desktop config (`claude_desktop_config.json`):
 - [TypeScript SDK Documentation](./sdks/typescript/README.md)
 - [Python SDK Documentation](./sdks/python/README.md)
 - [MCP Server Documentation](./mcp/README.md)
-- [API Reference](https://docs.xache.xyz)
 
 ## Payment
 
@@ -144,8 +148,6 @@ MIT License - see [LICENSE](./LICENSE)
 
 ## Links
 
-- [Website](https://xache.xyz)
 - [Documentation](https://docs.xache.xyz)
+- [Website](https://xache.xyz)
 - [Console](https://console.xache.xyz)
-- [Discord](https://discord.gg/xache)
-- [Twitter](https://twitter.com/xaboratory)

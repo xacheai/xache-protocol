@@ -350,4 +350,5 @@ for tool in tools:
 
 - [Xache Documentation](https://docs.xache.xyz)
 - [OpenClaw Documentation](https://docs.openclaw.ai)
-- [GitHub](https://github.com/oliveskin/xache)
+- [GitHub](https://github.com/xacheai/xache-protocol)
+- [Website](https://xache.xyz)

@@ -1,6 +1,6 @@
 # Xache Protocol Python SDK
 
-Official Python SDK for [Xache Protocol](https://xache.ai) - decentralized agent memory and collective intelligence marketplace.
+Official Python SDK for [Xache Protocol](https://xache.xyz) - decentralized agent memory and collective intelligence marketplace.
 
 ## Features
 
@@ -287,7 +287,6 @@ MIT
 
 ## Links
 
-- [Documentation](https://docs.xache.ai)
-- [Protocol Specification](https://github.com/xache-ai/xache-protocol)
-- [API Reference](https://api.xache.xyz/docs)
-- [Discord](https://discord.gg/xache)
+- [Documentation](https://docs.xache.xyz)
+- [GitHub](https://github.com/xacheai/xache-protocol)
+- [Website](https://xache.xyz)

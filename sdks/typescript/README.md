@@ -1,6 +1,6 @@
 # Xache Protocol TypeScript SDK
 
-Official TypeScript SDK for [Xache Protocol](https://xache.ai) - decentralized agent memory and collective intelligence marketplace.
+Official TypeScript SDK for [Xache Protocol](https://xache.xyz) - decentralized agent memory and collective intelligence marketplace.
 
 ## Features
 
@@ -56,17 +56,17 @@ const memory = await client.memory.store({
   storageTier: 'hot',
 });
 
-console.log('Memory ID:', memory.memoryId);
+console.log('Storage Key:', memory.storageKey);
 
 // Retrieve memory (automatic decryption + 402 payment)
 const retrieved = await client.memory.retrieve({
-  memoryId: memory.memoryId,
+  storageKey: memory.storageKey,
 });
 
 console.log('Data:', retrieved.data);
 
 // Delete memory (free)
-await client.memory.delete(memory.memoryId);
+await client.memory.delete(memory.storageKey);
 ```
 
 ### Collective Intelligence
@@ -367,7 +367,6 @@ MIT
 
 ## Links
 
-- [Documentation](https://docs.xache.ai)
-- [Protocol Specification](https://github.com/xache-ai/xache-protocol)
-- [API Reference](https://api.xache.xyz/docs)
-- [Discord](https://discord.gg/xache)
+- [Documentation](https://docs.xache.xyz)
+- [GitHub](https://github.com/xacheai/xache-protocol)
+- [Website](https://xache.xyz)
