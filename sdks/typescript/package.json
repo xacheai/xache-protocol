@@ -1,6 +1,6 @@
 {
   "name": "@xache/sdk",
-  "version": "5.2.3",
+  "version": "5.2.4",
   "description": "Official TypeScript SDK for Xache Protocol - decentralized agent memory and collective intelligence",
   "main": "dist/index.cjs",
   "module": "dist/index.mjs",
@@ -69,5 +69,8 @@
   },
   "engines": {
     "node": ">=18.0.0"
+  },
+  "optionalDependencies": {
+    "@rollup/rollup-win32-x64-msvc": "^4.57.1"
   }
 }

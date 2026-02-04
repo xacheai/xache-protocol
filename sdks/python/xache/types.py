@@ -397,3 +397,63 @@ class TopAgent:
     reputation_score: float  # Overall reputation score (0-100)
     operation_count: int  # Total number of operations
     total_earned_usd: str  # Total earned in USD
+
+
+# ===========================================================================
+# ERC-8004 Portable Reputation Types (https://www.8004.org/)
+# ===========================================================================
+
+ERC8004Network = Literal["base", "base-sepolia"]
+
+
+@dataclass
+class ERC8004FeedbackAuth:
+    """ERC-8004 FeedbackAuth struct for EIP-712 signing"""
+    agent_id: str
+    client_address: str
+    index_limit: int
+    expiry: int
+    chain_id: int
+    identity_registry: str
+    signer_address: str
+
+
+@dataclass
+class ERC8004TypedDataDomain:
+    """EIP-712 domain for ERC-8004"""
+    name: str
+    version: str
+    chain_id: int
+    verifying_contract: str
+
+
+@dataclass
+class ERC8004TypedData:
+    """EIP-712 typed data structure for ERC-8004 authorization"""
+    domain: ERC8004TypedDataDomain
+    types: Dict[str, List[Dict[str, str]]]
+    primary_type: str
+    message: Dict[str, str]
+
+
+@dataclass
+class ERC8004EnableResponse:
+    """Response from enabling ERC-8004 export"""
+    authorization_id: str
+    agent_id: str
+    expires_at: str
+    message: str
+
+
+@dataclass
+class ERC8004ExportStatus:
+    """ERC-8004 export status"""
+    enabled: bool
+    is_valid: bool
+    expires_at: Optional[str] = None
+    feedbacks_used: Optional[int] = None
+    feedbacks_limit: Optional[int] = None
+    erc8004_agent_id: Optional[str] = None
+    last_exported_at: Optional[str] = None
+    last_exported_score: Optional[float] = None
+    network: Optional[str] = None

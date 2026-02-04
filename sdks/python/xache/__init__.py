@@ -25,7 +25,7 @@ Example:
     ```
 """
 
-__version__ = "5.2.0"
+__version__ = "5.2.4"
 
 # Main client
 from .client import XacheClient
@@ -52,6 +52,13 @@ from .types import (
     Receipt,
     ReceiptWithProof,
     UsageAnalytics,
+    # ERC-8004 types
+    ERC8004Network,
+    ERC8004FeedbackAuth,
+    ERC8004TypedData,
+    ERC8004TypedDataDomain,
+    ERC8004EnableResponse,
+    ERC8004ExportStatus,
 )
 
 # Errors
@@ -128,6 +135,13 @@ __all__ = [
     "Receipt",
     "ReceiptWithProof",
     "UsageAnalytics",
+    # ERC-8004 types
+    "ERC8004Network",
+    "ERC8004FeedbackAuth",
+    "ERC8004TypedData",
+    "ERC8004TypedDataDomain",
+    "ERC8004EnableResponse",
+    "ERC8004ExportStatus",
     # Errors
     "XacheError",
     "UnauthenticatedError",

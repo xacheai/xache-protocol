@@ -1,7 +1,19 @@
 """Reputation Service - Query reputation scores and domain expertise per HLD §2.2"""
 
-from typing import List, Optional
-from ..types import ReputationSnapshot, DomainReputation, TopAgent, DID
+from typing import Dict, List, Optional, Literal
+from ..types import (
+    ReputationSnapshot,
+    DomainReputation,
+    TopAgent,
+    DID,
+    ERC8004FeedbackAuth,
+    ERC8004TypedData,
+    ERC8004TypedDataDomain,
+    ERC8004EnableResponse,
+    ERC8004ExportStatus,
+)
+
+ERC8004Network = Literal["base", "base-sepolia"]
 
 
 class ReputationService:
@@ -272,3 +284,237 @@ class ReputationService:
             raise ValueError(
                 "domain must only contain lowercase letters, numbers, and hyphens"
             )
+
+    # ===========================================================================
+    # ERC-8004 Portable Reputation (https://www.8004.org/)
+    # ===========================================================================
+
+    async def build_erc8004_authorization(
+        self,
+        wallet_address: str,
+        expiry_days: int = 365,
+        index_limit: int = 100,
+        network: ERC8004Network = "base-sepolia",
+    ) -> Dict[str, any]:
+        """
+        Build ERC-8004 authorization for external signing.
+
+        Fetches the EIP-712 typed data structure from the backend (which has the
+        correct contract addresses). Use the returned typed data with eth_account,
+        web3.py, or any EIP-712 compatible signer.
+
+        Args:
+            wallet_address: Your wallet address that will sign the authorization
+            expiry_days: Number of days until authorization expires (default: 365)
+            index_limit: Maximum number of feedback entries allowed (default: 100)
+            network: Network: 'base' or 'base-sepolia' (default: 'base-sepolia')
+
+        Returns:
+            Dict with 'typed_data' (ERC8004TypedData) and 'authorization' (ERC8004FeedbackAuth)
+
+        Example:
+            ```python
+            # Step 1: Build the typed data (fetches from backend)
+            result = await client.reputation.build_erc8004_authorization(
+                wallet_address='0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb',
+                expiry_days=365,
+                index_limit=100,
+            )
+            typed_data = result['typed_data']
+            authorization = result['authorization']
+
+            # Step 2: Sign with your wallet (eth_account example)
+            from eth_account import Account
+            from eth_account.messages import encode_typed_data
+
+            message = encode_typed_data(full_message=typed_data)
+            signed = Account.sign_message(message, private_key=your_key)
+            signature = signed.signature.hex()
+
+            # Step 3: Submit the signature
+            await client.reputation.submit_erc8004_authorization(
+                authorization=authorization,
+                signature=signature,
+                network='base-sepolia',
+            )
+            ```
+        """
+        if not wallet_address:
+            raise ValueError("wallet_address is required")
+
+        # Build query params
+        params = f"wallet={wallet_address}&network={network}"
+        if expiry_days:
+            params += f"&expiryDays={expiry_days}"
+        if index_limit:
+            params += f"&indexLimit={index_limit}"
+
+        # Fetch typed data from backend (single source of truth for contract addresses)
+        response = await self.client.request(
+            "GET", f"/v1/reputation/erc8004/auth-request?{params}", skip_auth=True
+        )
+
+        if not response.success or not response.data:
+            raise Exception("Failed to get ERC-8004 authorization data from backend")
+
+        data = response.data
+        typed_data_raw = data["typedData"]
+        auth_raw = data["authorization"]
+
+        # Convert to typed objects
+        typed_data = ERC8004TypedData(
+            domain=ERC8004TypedDataDomain(
+                name=typed_data_raw["domain"]["name"],
+                version=typed_data_raw["domain"]["version"],
+                chain_id=typed_data_raw["domain"]["chainId"],
+                verifying_contract=typed_data_raw["domain"]["verifyingContract"],
+            ),
+            types=typed_data_raw["types"],
+            primary_type=typed_data_raw["primaryType"],
+            message=typed_data_raw["message"],
+        )
+
+        authorization = ERC8004FeedbackAuth(
+            agent_id=auth_raw["agentId"],
+            client_address=auth_raw["clientAddress"],
+            index_limit=auth_raw["indexLimit"],
+            expiry=auth_raw["expiry"],
+            chain_id=auth_raw["chainId"],
+            identity_registry=auth_raw["identityRegistry"],
+            signer_address=auth_raw["signerAddress"],
+        )
+
+        return {"typed_data": typed_data, "authorization": authorization}
+
+    async def submit_erc8004_authorization(
+        self,
+        authorization: ERC8004FeedbackAuth,
+        signature: str,
+        network: ERC8004Network = "base-sepolia",
+    ) -> ERC8004EnableResponse:
+        """
+        Submit a signed ERC-8004 authorization.
+
+        After signing the typed data from build_erc8004_authorization(), submit
+        the signature to enable reputation export.
+
+        Args:
+            authorization: The authorization struct from build_erc8004_authorization()
+            signature: The EIP-712 signature from your wallet
+            network: Network: 'base' or 'base-sepolia' (default: 'base-sepolia')
+
+        Returns:
+            Authorization confirmation with ID and expiry
+
+        Example:
+            ```python
+            result = await client.reputation.submit_erc8004_authorization(
+                authorization=authorization,
+                signature='0x...',
+                network='base-sepolia',
+            )
+
+            print('ERC-8004 export enabled!')
+            print(f'Authorization ID: {result.authorization_id}')
+            ```
+        """
+        if not authorization or not signature:
+            raise ValueError("authorization and signature are required")
+
+        # Convert authorization to dict for API
+        auth_dict = {
+            "agentId": authorization.agent_id,
+            "clientAddress": authorization.client_address,
+            "indexLimit": authorization.index_limit,
+            "expiry": authorization.expiry,
+            "chainId": authorization.chain_id,
+            "identityRegistry": authorization.identity_registry,
+            "signerAddress": authorization.signer_address,
+        }
+
+        response = await self.client.request(
+            "POST",
+            "/v1/reputation/erc8004/authorize",
+            body={
+                "authorization": auth_dict,
+                "signature": signature,
+                "network": network,
+            },
+        )
+
+        if not response.success or not response.data:
+            raise Exception("Failed to enable ERC-8004 export")
+
+        data = response.data
+        return ERC8004EnableResponse(
+            authorization_id=data.get("authorizationId", ""),
+            agent_id=data.get("agentId", ""),
+            expires_at=data.get("expiresAt", ""),
+            message=data.get("message", ""),
+        )
+
+    async def disable_erc8004_export(self) -> Dict[str, any]:
+        """
+        Disable ERC-8004 reputation export.
+
+        Revokes the current authorization, preventing further reputation exports.
+
+        Returns:
+            Dict with 'success' and 'message'
+
+        Example:
+            ```python
+            await client.reputation.disable_erc8004_export()
+            print('ERC-8004 export disabled')
+            ```
+        """
+        response = await self.client.request(
+            "DELETE", "/v1/reputation/erc8004/authorize"
+        )
+
+        if not response.success or not response.data:
+            raise Exception("Failed to disable ERC-8004 export")
+
+        return response.data
+
+    async def get_erc8004_status(self) -> ERC8004ExportStatus:
+        """
+        Get ERC-8004 export status.
+
+        Check if ERC-8004 export is enabled and view export history.
+
+        Returns:
+            ERC8004ExportStatus with enabled status and details
+
+        Example:
+            ```python
+            status = await client.reputation.get_erc8004_status()
+
+            if status.enabled:
+                print('ERC-8004 export is enabled')
+                print(f'Expires: {status.expires_at}')
+                print(f'Feedbacks used: {status.feedbacks_used} / {status.feedbacks_limit}')
+                if status.last_exported_at:
+                    print(f'Last exported: {status.last_exported_at}')
+                    print(f'Score: {status.last_exported_score}')
+            else:
+                print('ERC-8004 export is not enabled')
+            ```
+        """
+        response = await self.client.request("GET", "/v1/reputation/erc8004/status")
+
+        if not response.success or not response.data:
+            raise Exception("Failed to get ERC-8004 status")
+
+        data = response.data
+        return ERC8004ExportStatus(
+            enabled=data.get("enabled", False),
+            is_valid=data.get("isValid", False),
+            expires_at=data.get("expiresAt"),
+            feedbacks_used=data.get("feedbacksUsed"),
+            feedbacks_limit=data.get("feedbacksLimit"),
+            erc8004_agent_id=data.get("erc8004AgentId"),
+            last_exported_at=data.get("lastExportedAt"),
+            last_exported_score=data.get("lastExportedScore"),
+            network=data.get("network"),
+        )

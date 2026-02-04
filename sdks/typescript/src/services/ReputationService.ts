@@ -213,34 +213,20 @@ export class ReputationService {
   // ERC-8004 Portable Reputation (https://www.8004.org/)
   // ===========================================================================
 
-  /** ERC-8004 registry addresses */
-  private static readonly ERC8004_REGISTRIES = {
-    'base-sepolia': {
-      identityRegistry: '0x8004AA63c570c570eBF15376c0dB199918BFe9Fb',
-      chainId: 84532,
-    },
-    'base': {
-      identityRegistry: '0x8004AA63c570c570eBF15376c0dB199918BFe9Fb',
-      chainId: 8453,
-    },
-  } as const;
-
-  /** Xache's export service address (authorized to submit feedback on your behalf) */
-  private static readonly XACHE_EXPORT_SERVICE = '0x4A83c6f7EBfA661F97924acd10380DF75E7E4682';
-
   /**
    * Build ERC-8004 authorization for external signing
    *
-   * Returns the EIP-712 typed data structure that must be signed by your wallet.
-   * Use this with MetaMask, WalletConnect, Ledger, or any EIP-712 compatible signer.
+   * Fetches the EIP-712 typed data structure from the backend (which has the
+   * correct contract addresses). Use the returned typed data with MetaMask,
+   * WalletConnect, Ledger, or any EIP-712 compatible signer.
    *
    * @param options - Configuration options
-   * @returns Typed data for signing and authorization struct
+   * @returns Promise of typed data for signing and authorization struct
    *
    * @example
    * ```typescript
-   * // Step 1: Build the typed data
-   * const { typedData, authorization } = client.reputation.buildERC8004Authorization({
+   * // Step 1: Build the typed data (fetches from backend)
+   * const { typedData, authorization } = await client.reputation.buildERC8004Authorization({
    *   walletAddress: '0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb',
    *   expiryDays: 365,
    *   indexLimit: 100,
@@ -260,7 +246,7 @@ export class ReputationService {
    * });
    * ```
    */
-  buildERC8004Authorization(options: {
+  async buildERC8004Authorization(options: {
     /** Your wallet address that will sign the authorization */
     walletAddress: string;
     /** Number of days until authorization expires (default: 365) */
@@ -269,69 +255,29 @@ export class ReputationService {
     indexLimit?: number;
     /** Network: 'base' or 'base-sepolia' (default: 'base-sepolia') */
     network?: 'base' | 'base-sepolia';
-  }): { typedData: ERC8004TypedData; authorization: ERC8004FeedbackAuth } {
-    const {
-      walletAddress,
-      expiryDays = 365,
-      indexLimit = 100,
-      network = 'base-sepolia',
-    } = options;
+  }): Promise<{ typedData: ERC8004TypedData; authorization: ERC8004FeedbackAuth }> {
+    const { walletAddress, expiryDays, indexLimit, network = 'base-sepolia' } = options;
 
     if (!walletAddress) {
       throw new Error('walletAddress is required');
     }
 
-    const registry = ReputationService.ERC8004_REGISTRIES[network];
-    const expiry = Math.floor(Date.now() / 1000) + (expiryDays * 24 * 60 * 60);
+    // Build query params
+    const params = new URLSearchParams({ wallet: walletAddress, network });
+    if (expiryDays !== undefined) params.set('expiryDays', expiryDays.toString());
+    if (indexLimit !== undefined) params.set('indexLimit', indexLimit.toString());
 
-    const authorization: ERC8004FeedbackAuth = {
-      agentId: '0', // Will be updated if agent is registered in 8004
-      clientAddress: ReputationService.XACHE_EXPORT_SERVICE,
-      indexLimit,
-      expiry,
-      chainId: registry.chainId,
-      identityRegistry: registry.identityRegistry,
-      signerAddress: walletAddress,
-    };
+    // Fetch typed data from backend (single source of truth for contract addresses)
+    const response = await this.client.request<{
+      typedData: ERC8004TypedData;
+      authorization: ERC8004FeedbackAuth;
+    }>('GET', `/v1/reputation/erc8004/auth-request?${params}`, undefined, { skipAuth: true });
 
-    // EIP-712 typed data structure
-    const typedData: ERC8004TypedData = {
-      domain: {
-        name: 'ERC8004ReputationRegistry',
-        version: '1',
-        chainId: registry.chainId,
-        verifyingContract: registry.identityRegistry,
-      },
-      types: {
-        EIP712Domain: [
-          { name: 'name', type: 'string' },
-          { name: 'version', type: 'string' },
-          { name: 'chainId', type: 'uint256' },
-          { name: 'verifyingContract', type: 'address' },
-        ],
-        FeedbackAuth: [
-          { name: 'agentId', type: 'uint256' },
-          { name: 'clientAddress', type: 'address' },
-          { name: 'indexLimit', type: 'uint256' },
-          { name: 'expiry', type: 'uint256' },
-          { name: 'chainId', type: 'uint256' },
-          { name: 'identityRegistry', type: 'address' },
-          { name: 'signerAddress', type: 'address' },
-        ],
-      },
-      primaryType: 'FeedbackAuth',
-      message: {
-        agentId: authorization.agentId,
-        clientAddress: authorization.clientAddress,
-        indexLimit: authorization.indexLimit.toString(),
-        expiry: authorization.expiry.toString(),
-        chainId: authorization.chainId.toString(),
-        identityRegistry: authorization.identityRegistry,
-        signerAddress: authorization.signerAddress,
-      },
-    };
+    if (!response.success || !response.data) {
+      throw new Error('Failed to get ERC-8004 authorization data from backend');
+    }
 
-    return { typedData, authorization };
+    return response.data;
   }
 
   /**
