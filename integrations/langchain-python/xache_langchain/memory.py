@@ -6,7 +6,7 @@ Drop-in replacement for ConversationBufferMemory with verifiable receipts
 import os
 from typing import Any, Dict, List, Optional
 from langchain.memory.chat_memory import BaseChatMemory
-from langchain.schema import BaseMessage, HumanMessage, AIMessage
+from langchain_core.messages import BaseMessage, HumanMessage, AIMessage
 from pydantic import Field
 
 from xache import XacheClient

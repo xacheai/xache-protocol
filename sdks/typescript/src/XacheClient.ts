@@ -37,6 +37,7 @@ import { SessionService } from './services/SessionService';
 import { RoyaltyService } from './services/RoyaltyService';
 import { WorkspaceService } from './services/WorkspaceService';
 import { OwnerService } from './services/OwnerService';
+import { WalletService } from './services/WalletService';
 import { PaymentHandler } from './payment/PaymentHandler';
 
 /**
@@ -65,8 +66,10 @@ import { PaymentHandler } from './payment/PaymentHandler';
  * ```
  */
 export class XacheClient {
-  private readonly config: Required<Omit<XacheClientConfig, 'privateKey' | 'paymentProvider' | 'retryPolicy' | 'cache' | 'autoContribute'>> & {
+  private readonly config: Required<Omit<XacheClientConfig, 'privateKey' | 'signer' | 'walletProvider' | 'paymentProvider' | 'retryPolicy' | 'cache' | 'autoContribute'>> & {
     privateKey?: string;
+    signer?: import('./types').XacheSigner;
+    walletProvider?: import('./types').XacheWalletProvider;
     paymentProvider?: PaymentProviderConfig;
     retryPolicy?: RetryPolicy;
     cache?: CacheConfig;
@@ -88,6 +91,7 @@ export class XacheClient {
   public readonly royalty: RoyaltyService;
   public readonly workspaces: WorkspaceService;
   public readonly owner: OwnerService;
+  public readonly wallet: WalletService;
 
   constructor(config: XacheClientConfig) {
     // Validate configuration
@@ -98,6 +102,8 @@ export class XacheClient {
       apiUrl: config.apiUrl,
       did: config.did,
       privateKey: config.privateKey,
+      signer: config.signer,
+      walletProvider: config.walletProvider,
       timeout: config.timeout ?? 30000,
       debug: config.debug ?? false,
       retryPolicy: config.retryPolicy,
@@ -127,6 +133,7 @@ export class XacheClient {
     this.royalty = new RoyaltyService(this);
     this.workspaces = new WorkspaceService(this);
     this.owner = new OwnerService(this);
+    this.wallet = new WalletService(this);
 
     if (this.config.debug) {
       console.log('Xache client initialized:', {
@@ -268,8 +275,10 @@ export class XacheClient {
   /**
    * Get client configuration (read-only)
    */
-  getConfig(): Readonly<Required<Omit<XacheClientConfig, 'privateKey' | 'paymentProvider' | 'retryPolicy' | 'cache' | 'autoContribute'>> & {
+  getConfig(): Readonly<Required<Omit<XacheClientConfig, 'privateKey' | 'signer' | 'walletProvider' | 'paymentProvider' | 'retryPolicy' | 'cache' | 'autoContribute'>> & {
     privateKey?: string;
+    signer?: import('./types').XacheSigner;
+    walletProvider?: import('./types').XacheWalletProvider;
     paymentProvider?: PaymentProviderConfig;
     retryPolicy?: RetryPolicy;
     cache?: CacheConfig;

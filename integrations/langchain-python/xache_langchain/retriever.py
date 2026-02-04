@@ -5,8 +5,9 @@ Semantic memory retrieval for RAG pipelines
 
 import os
 from typing import List, Optional, Dict, Any
-from langchain.schema import BaseRetriever, Document
-from langchain.callbacks.manager import CallbackManagerForRetrieverRun
+from langchain_core.retrievers import BaseRetriever
+from langchain_core.documents import Document
+from langchain_core.callbacks import CallbackManagerForRetrieverRun
 from pydantic import Field
 
 from xache import XacheClient

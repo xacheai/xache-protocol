@@ -83,6 +83,7 @@ class XacheClient:
         self._royalty_service = None
         self._workspace_service = None
         self._owner_service = None
+        self._wallet_service = None
 
         if self.debug:
             print(f"Xache client initialized: api_url={api_url}, did={did}")
@@ -325,6 +326,15 @@ class XacheClient:
 
             self._owner_service = OwnerService(self)
         return self._owner_service
+
+    @property
+    def wallet(self):
+        """Get wallet service"""
+        if self._wallet_service is None:
+            from .services.wallet import WalletService
+
+            self._wallet_service = WalletService(self)
+        return self._wallet_service
 
     async def close(self):
         """Close HTTP client"""

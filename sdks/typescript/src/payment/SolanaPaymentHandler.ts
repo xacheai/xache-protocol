@@ -26,6 +26,7 @@ import {
 import {
   createTransferCheckedInstruction,
   getAssociatedTokenAddress,
+  getAccount,
   TOKEN_PROGRAM_ID,
 } from '@solana/spl-token';
 
@@ -105,6 +106,65 @@ export class SolanaPaymentHandler {
   }
 
   /**
+   * Check if agent has sufficient USDC balance for payment
+   *
+   * @param agentPublicKey - Agent's public key
+   * @param tokenMint - USDC mint address
+   * @param requiredAmount - Amount required for payment (in atomic units)
+   * @throws Error if insufficient balance
+   */
+  async checkBalance(
+    agentPublicKey: PublicKey,
+    tokenMint: PublicKey,
+    requiredAmount: bigint
+  ): Promise<void> {
+    // Get agent's associated token account
+    const agentATA = await getAssociatedTokenAddress(
+      tokenMint,
+      agentPublicKey,
+      false,
+      TOKEN_PROGRAM_ID
+    );
+
+    try {
+      const account = await getAccount(this.connection, agentATA);
+      const balance = account.amount;
+
+      if (balance < requiredAmount) {
+        // Format amounts for human-readable error
+        const haveAmount = Number(balance) / 1_000_000;
+        const needAmount = Number(requiredAmount) / 1_000_000;
+
+        throw new Error(
+          `Insufficient USDC balance on Solana. ` +
+          `Have: $${haveAmount.toFixed(6)} USDC, Need: $${needAmount.toFixed(6)} USDC. ` +
+          `Please fund wallet ${agentPublicKey.toBase58()} with USDC.`
+        );
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+
+      // Re-throw if it's our insufficient balance error
+      if (message.includes('Insufficient USDC balance')) {
+        throw error;
+      }
+
+      // Token account doesn't exist = zero balance
+      if (message.includes('could not find account') || message.includes('Account does not exist')) {
+        const needAmount = Number(requiredAmount) / 1_000_000;
+        throw new Error(
+          `No USDC token account found on Solana. ` +
+          `Have: $0.00 USDC, Need: $${needAmount.toFixed(6)} USDC. ` +
+          `Please fund wallet ${agentPublicKey.toBase58()} with USDC.`
+        );
+      }
+
+      // Other errors
+      throw new Error(`Failed to check Solana USDC balance: ${message}`);
+    }
+  }
+
+  /**
    * Create x402 SVM payment payload
    *
    * Per x402 SVM spec (https://github.com/coinbase/x402/blob/main/specs/schemes/exact/scheme_exact_svm.md):
@@ -148,6 +208,13 @@ export class SolanaPaymentHandler {
           'feePayer cannot be the agent. Per x402 SVM spec, CDP facilitator must be the fee payer.'
         );
       }
+
+      // Check balance before proceeding (fails fast with helpful error)
+      await this.checkBalance(
+        agentKeypair.publicKey,
+        tokenMint,
+        BigInt(challenge.maxAmountRequired)
+      );
 
       // Get associated token accounts
       // Source: Agent's ATA (agent is the owner/authority)

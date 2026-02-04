@@ -25,7 +25,7 @@ Example:
     ```
 """
 
-__version__ = "5.2.4"
+__version__ = "5.3.0"
 
 # Main client
 from .client import XacheClient
@@ -83,6 +83,14 @@ from .services import (
     BudgetService,
     ReceiptsService,
     ExtractionService,
+    WalletService,
+)
+
+# Wallet types
+from .services.wallet import (
+    WalletBalance,
+    FundingStatus,
+    WalletNetwork,
 )
 
 # Extraction types
@@ -160,6 +168,11 @@ __all__ = [
     "BudgetService",
     "ReceiptsService",
     "ExtractionService",
+    "WalletService",
+    # Wallet types
+    "WalletBalance",
+    "FundingStatus",
+    "WalletNetwork",
     # Extraction types
     "LLMProvider",
     "LLMApiFormat",

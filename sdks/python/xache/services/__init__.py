@@ -12,6 +12,7 @@ from .sessions import SessionService
 from .royalty import RoyaltyService
 from .workspaces import WorkspaceService
 from .owner import OwnerService
+from .wallet import WalletService
 
 __all__ = [
     "IdentityService",
@@ -26,4 +27,5 @@ __all__ = [
     "RoyaltyService",
     "WorkspaceService",
     "OwnerService",
+    "WalletService",
 ]

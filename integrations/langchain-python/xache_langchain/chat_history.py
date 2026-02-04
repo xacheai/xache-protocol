@@ -5,8 +5,8 @@ Persistent chat history with verifiable receipts
 
 import os
 from typing import List, Optional
-from langchain.schema import BaseMessage, HumanMessage, AIMessage, SystemMessage
-from langchain.memory.chat_message_histories.base import BaseChatMessageHistory
+from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, SystemMessage
+from langchain_core.chat_history import BaseChatMessageHistory
 
 from xache import XacheClient
 from ._async_utils import run_sync

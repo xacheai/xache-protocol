@@ -5,7 +5,7 @@ Automatic memory extraction from conversations
 
 import os
 from typing import List, Optional, Dict, Any
-from langchain.schema import Document
+from langchain_core.documents import Document
 from pydantic import BaseModel, Field
 
 from xache import XacheClient

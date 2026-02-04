@@ -175,6 +175,90 @@ export interface CacheConfig {
   storage?: CacheStorage;
 }
 
+// =============================================================================
+// XACHE SIGNER INTERFACE (AgentKit Compatibility)
+// =============================================================================
+
+/**
+ * Wallet-agnostic signer interface for EVM payments.
+ * Compatible with AgentKit, ethers.Wallet, and custom implementations.
+ *
+ * @example
+ * ```typescript
+ * // Using with AgentKit
+ * import { AgentKit } from '@coinbase/agentkit';
+ *
+ * const agentkit = await AgentKit.create();
+ * const wallet = await agentkit.getWallet();
+ *
+ * // Wrap AgentKit wallet as XacheSigner
+ * const signer: XacheSigner = {
+ *   getAddress: async () => wallet.address,
+ *   signTypedData: async (domain, types, value) => {
+ *     return wallet.signTypedData(domain, types, value);
+ *   },
+ * };
+ *
+ * const client = new XacheClient({ did, signer });
+ * ```
+ */
+export interface XacheSigner {
+  /** Get wallet address */
+  getAddress(): Promise<string>;
+
+  /**
+   * Sign EIP-712 typed data (for EVM payments).
+   * Returns hex-encoded signature.
+   */
+  signTypedData(
+    domain: {
+      name: string;
+      version: string;
+      chainId: number;
+      verifyingContract: string;
+    },
+    types: Record<string, Array<{ name: string; type: string }>>,
+    value: Record<string, unknown>
+  ): Promise<string>;
+
+  /**
+   * Sign raw message bytes (optional, for Solana or general signatures).
+   * Returns signature bytes.
+   */
+  signMessage?(message: Uint8Array): Promise<Uint8Array>;
+}
+
+/**
+ * Wallet provider interface for AgentKit integration.
+ * Provides access to a signer instance.
+ *
+ * @example
+ * ```typescript
+ * // Using AgentKit as wallet provider
+ * import { AgentKit } from '@coinbase/agentkit';
+ *
+ * const agentkit = await AgentKit.create();
+ *
+ * const provider: XacheWalletProvider = {
+ *   getSigner: async () => createXacheSignerFromAgentKit(agentkit),
+ *   getAddress: async () => (await agentkit.getWallet()).address,
+ *   getChainType: () => 'evm',
+ * };
+ *
+ * const client = new XacheClient({ did, walletProvider: provider });
+ * ```
+ */
+export interface XacheWalletProvider {
+  /** Get signer for transactions */
+  getSigner(): Promise<XacheSigner>;
+
+  /** Get wallet address */
+  getAddress(): Promise<string>;
+
+  /** Get chain type */
+  getChainType(): 'evm' | 'solana';
+}
+
 /**
  * Client configuration
  */
@@ -187,6 +271,19 @@ export interface XacheClientConfig {
 
   /** Private key for signing (hex string). Optional for read-only operations. */
   privateKey?: string;
+
+  /**
+   * Alternative to privateKey: Use a custom signer (e.g., AgentKit wallet).
+   * If both privateKey and signer are provided, privateKey takes precedence.
+   */
+  signer?: XacheSigner;
+
+  /**
+   * Alternative to privateKey: Use a wallet provider (e.g., AgentKit).
+   * The provider's getSigner() will be called when signing is needed.
+   * If both privateKey and walletProvider are provided, privateKey takes precedence.
+   */
+  walletProvider?: XacheWalletProvider;
 
   /** Payment provider configuration */
   paymentProvider?: PaymentProviderConfig;

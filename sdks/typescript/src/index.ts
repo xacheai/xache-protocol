@@ -18,6 +18,8 @@ export type {
   APIResponse,
   Payment402Response,
   XacheClientConfig,
+  XacheSigner,
+  XacheWalletProvider,
   PaymentProviderConfig,
   RetryPolicy,
   CacheConfig,
@@ -104,6 +106,7 @@ export { SessionService } from './services/SessionService';
 export { RoyaltyService } from './services/RoyaltyService';
 export { WorkspaceService } from './services/WorkspaceService';
 export { OwnerService } from './services/OwnerService';
+export { WalletService } from './services/WalletService';
 
 // Facilitator types (x402 v2)
 export type {
@@ -154,6 +157,15 @@ export type {
 
 // Fleet budget types
 export type { FleetBudgetStatus } from './services/BudgetService';
+
+// Wallet types
+export type {
+  WalletNetwork,
+  WalletBalance,
+  OnrampUrlOptions,
+  NeedsFundingOptions,
+  FundingStatus,
+} from './services/WalletService';
 
 // Anchor types
 export type {
