@@ -8,7 +8,7 @@ from typing import Dict, Optional, Any, Literal
 
 from .types import XacheClientConfig, APIResponse
 from .utils.http import HttpClient
-from .crypto.signing import generate_auth_headers, validate_did
+from .crypto.signing import generate_auth_headers, validate_did, derive_evm_address, derive_solana_address
 from .errors import PaymentRequiredError
 
 
@@ -114,9 +114,41 @@ class XacheClient:
             raise ValueError("private_key is required")
 
         # Validate private key format (hex string)
+        # EVM (secp256k1): 64 chars (32 bytes)
+        # Solana (ed25519): 64 chars (32-byte seed) or 128 chars (64-byte full keypair)
         clean_key = private_key[2:] if private_key.startswith("0x") else private_key
-        if len(clean_key) != 64 or not all(c in "0123456789abcdefABCDEF" for c in clean_key):
-            raise ValueError("private_key must be a 64-character hex string")
+        is_valid_hex = all(c in "0123456789abcdefABCDEF" for c in clean_key)
+        is_valid_length = len(clean_key) in (64, 128)
+
+        if not is_valid_hex or not is_valid_length:
+            raise ValueError(
+                "private_key must be a 64-character (EVM) or 64/128-character (Solana) hex string"
+            )
+
+        # Cross-validate: ensure private key matches the address in the DID
+        did_parts = did.split(":")
+        chain = did_parts[2]  # 'evm' or 'sol'
+        did_address = did_parts[3]  # wallet address
+
+        try:
+            if chain == "evm":
+                derived_address = derive_evm_address(clean_key)
+                if derived_address.lower() != did_address.lower():
+                    raise ValueError(
+                        f"Private key does not match DID address. "
+                        f"Expected: {did_address.lower()}, Got: {derived_address.lower()}"
+                    )
+            elif chain == "sol":
+                derived_address = derive_solana_address(clean_key)
+                if derived_address != did_address:
+                    raise ValueError(
+                        f"Private key does not match DID address. "
+                        f"Expected: {did_address}, Got: {derived_address}"
+                    )
+        except ValueError:
+            raise
+        except Exception as e:
+            raise ValueError(f"Failed to validate private key: {str(e)}")
 
     async def request(
         self,
@@ -157,7 +189,11 @@ class XacheClient:
             headers["Idempotency-Key"] = idempotency_key
 
         if self.debug:
-            print(f"{method} {path}", {"body": body, "headers": headers})
+            # Redact sensitive headers for logging
+            safe_headers = {**headers}
+            if "X-Sig" in safe_headers:
+                safe_headers["X-Sig"] = "[REDACTED]"
+            print(f"{method} {path}", {"body": body, "headers": safe_headers})
 
         # Make request
         response = await self._http_client.request(

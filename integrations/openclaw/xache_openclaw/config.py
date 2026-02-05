@@ -2,9 +2,14 @@
 Configuration management for Xache OpenClaw integration
 
 Allows global configuration so tools don't need credentials passed every time.
+
+WARNING: Global configuration is not thread-safe and should be set once at startup.
+For multi-tenant applications, pass configuration explicitly to avoid credential leakage.
 """
 
 import os
+import threading
+import warnings
 from typing import Optional
 from dataclasses import dataclass, field
 
@@ -47,8 +52,10 @@ class XacheConfig:
         return bool(self.wallet_address and self.private_key)
 
 
-# Global config instance
+# Global config instance with thread lock
 _config: Optional[XacheConfig] = None
+_config_lock = threading.Lock()
+_config_set_count = 0
 
 
 def get_config() -> XacheConfig:
@@ -67,9 +74,10 @@ def get_config() -> XacheConfig:
         ```
     """
     global _config
-    if _config is None:
-        _config = XacheConfig()
-    return _config
+    with _config_lock:
+        if _config is None:
+            _config = XacheConfig()
+        return _config
 
 
 def set_config(
@@ -107,18 +115,48 @@ def set_config(
             network="base-sepolia"
         )
         ```
+
+    Warning:
+        This sets global state. In multi-tenant applications, pass configuration
+        explicitly to each tool/function to avoid credential leakage between users.
     """
-    global _config
-    current = get_config()
+    global _config, _config_set_count
 
-    _config = XacheConfig(
-        wallet_address=wallet_address if wallet_address is not None else current.wallet_address,
-        private_key=private_key if private_key is not None else current.private_key,
-        api_url=api_url if api_url is not None else current.api_url,
-        chain=chain if chain is not None else current.chain,
-        network=network if network is not None else current.network,
-        timeout=timeout if timeout is not None else current.timeout,
-        debug=debug if debug is not None else current.debug,
-    )
+    with _config_lock:
+        _config_set_count += 1
 
-    return _config
+        # Warn if config is being set multiple times (potential multi-tenant issue)
+        if _config_set_count > 1:
+            warnings.warn(
+                "Xache config is being set multiple times. "
+                "In multi-tenant applications, pass configuration explicitly to avoid credential leakage.",
+                UserWarning,
+                stacklevel=2
+            )
+
+        current = _config if _config is not None else XacheConfig()
+
+        _config = XacheConfig(
+            wallet_address=wallet_address if wallet_address is not None else current.wallet_address,
+            private_key=private_key if private_key is not None else current.private_key,
+            api_url=api_url if api_url is not None else current.api_url,
+            chain=chain if chain is not None else current.chain,
+            network=network if network is not None else current.network,
+            timeout=timeout if timeout is not None else current.timeout,
+            debug=debug if debug is not None else current.debug,
+        )
+
+        return _config
+
+
+def clear_config() -> None:
+    """
+    Clear the global configuration.
+
+    This is primarily for testing. In production, configuration should
+    be set once at startup and not changed.
+    """
+    global _config, _config_set_count
+    with _config_lock:
+        _config = None
+        _config_set_count = 0

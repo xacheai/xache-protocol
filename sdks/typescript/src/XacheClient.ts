@@ -16,7 +16,7 @@ import type {
   DID,
 } from './types';
 import { HttpClient } from './utils/http';
-import { generateAuthHeaders, validateDID } from './crypto/signing';
+import { generateAuthHeaders, validateDID, deriveEVMAddress, deriveSolanaAddress } from './crypto/signing';
 import {
   deriveSubjectId as deriveSubjectIdCrypto,
   createSubjectContext as createSubjectContextUtil,
@@ -172,6 +172,36 @@ export class XacheClient {
       if (!/^[a-fA-F0-9]{64}$/.test(cleanKey) && !/^[a-fA-F0-9]{128}$/.test(cleanKey)) {
         throw new Error('privateKey must be a 64-character (EVM) or 128-character (Solana) hex string');
       }
+
+      // Cross-validate: ensure private key matches the address in the DID
+      const didParts = config.did.split(':');
+      const chain = didParts[2]; // 'evm' or 'sol'
+      const didAddress = didParts[3]; // wallet address
+
+      try {
+        if (chain === 'evm') {
+          const derivedAddress = deriveEVMAddress(cleanKey);
+          if (derivedAddress.toLowerCase() !== didAddress.toLowerCase()) {
+            throw new Error(
+              `Private key does not match DID address. ` +
+              `Expected: ${didAddress.toLowerCase()}, Got: ${derivedAddress.toLowerCase()}`
+            );
+          }
+        } else if (chain === 'sol') {
+          const derivedAddress = deriveSolanaAddress(cleanKey);
+          if (derivedAddress !== didAddress) {
+            throw new Error(
+              `Private key does not match DID address. ` +
+              `Expected: ${didAddress}, Got: ${derivedAddress}`
+            );
+          }
+        }
+      } catch (error) {
+        if (error instanceof Error && error.message.includes('does not match')) {
+          throw error;
+        }
+        throw new Error(`Failed to validate private key: ${(error as Error).message}`);
+      }
     }
   }
 
@@ -234,7 +264,10 @@ export class XacheClient {
     }
 
     if (this.config.debug) {
-      console.log(`${method} ${path}`, { body, headers });
+      // Redact sensitive headers for logging
+      const safeHeaders = { ...headers };
+      if (safeHeaders['X-Sig']) safeHeaders['X-Sig'] = '[REDACTED]';
+      console.log(`${method} ${path}`, { body, headers: safeHeaders });
     }
 
     // Make request

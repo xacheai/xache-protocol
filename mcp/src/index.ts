@@ -84,12 +84,75 @@ function getDID(): DID {
 }
 
 function validateConfig(): void {
+  // Required: wallet address
   if (!config.walletAddress) {
     console.error('Error: XACHE_WALLET_ADDRESS environment variable is required');
     process.exit(1);
   }
+
+  // Required: private key
   if (!config.privateKey) {
     console.error('Error: XACHE_PRIVATE_KEY environment variable is required');
+    process.exit(1);
+  }
+
+  // Validate chain
+  if (!['base', 'solana'].includes(config.chain)) {
+    console.error('Error: XACHE_CHAIN must be "base" or "solana"');
+    process.exit(1);
+  }
+
+  // Validate wallet address format based on chain
+  if (config.chain === 'solana') {
+    // Solana: base58 (32-44 chars)
+    if (!/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(config.walletAddress)) {
+      console.error('Error: Invalid Solana wallet address format');
+      process.exit(1);
+    }
+  } else {
+    // EVM: 0x + 40 hex chars
+    if (!/^0x[a-fA-F0-9]{40}$/.test(config.walletAddress)) {
+      console.error('Error: Invalid EVM wallet address format (expected 0x + 40 hex chars)');
+      process.exit(1);
+    }
+  }
+
+  // Validate private key format (hex string)
+  const cleanKey = config.privateKey.startsWith('0x')
+    ? config.privateKey.slice(2)
+    : config.privateKey;
+  if (!/^[a-fA-F0-9]{64}$/.test(cleanKey) && !/^[a-fA-F0-9]{128}$/.test(cleanKey)) {
+    console.error('Error: XACHE_PRIVATE_KEY must be a 64 or 128 character hex string');
+    process.exit(1);
+  }
+
+  // Validate API URL format
+  try {
+    new URL(config.apiUrl);
+  } catch {
+    console.error('Error: XACHE_API_URL is not a valid URL');
+    process.exit(1);
+  }
+
+  // Validate LLM provider if specified
+  if (config.llmProvider && !SUPPORTED_PROVIDERS.includes(config.llmProvider)) {
+    console.error(`Error: XACHE_LLM_PROVIDER must be one of: ${SUPPORTED_PROVIDERS.join(', ')}`);
+    process.exit(1);
+  }
+
+  // Validate LLM endpoint URL if specified
+  if (config.llmEndpoint) {
+    try {
+      new URL(config.llmEndpoint);
+    } catch {
+      console.error('Error: XACHE_LLM_ENDPOINT is not a valid URL');
+      process.exit(1);
+    }
+  }
+
+  // Validate LLM format
+  if (!['openai', 'anthropic', 'cohere'].includes(config.llmFormat)) {
+    console.error('Error: XACHE_LLM_FORMAT must be "openai", "anthropic", or "cohere"');
     process.exit(1);
   }
 }

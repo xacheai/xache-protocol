@@ -1,6 +1,9 @@
 """
 Request signing utilities per LLD §2.1
 Signature format: METHOD\nPATH\nSHA256(body)\nX-Ts\nX-Agent-DID
+
+IMPORTANT: EVM signing uses raw keccak256 (NOT EIP-191) to match server-side verification.
+IMPORTANT: Solana signatures are returned as base58 to match server-side verification.
 """
 
 import hashlib
@@ -8,10 +11,11 @@ import re
 import time
 from typing import Dict
 
+import base58
 from eth_account import Account
-from eth_account.messages import encode_defunct
+from eth_keys import keys as eth_keys
+from eth_hash.auto import keccak
 from solders.keypair import Keypair  # type: ignore
-from solders.pubkey import Pubkey  # type: ignore
 
 
 def sign_request(
@@ -94,20 +98,31 @@ def sign_message(message: str, private_key: str, did: str) -> str:
 
 def sign_message_evm(message: str, private_key: str) -> str:
     """
-    Sign message using EVM secp256k1 (eth_account)
+    Sign message using EVM secp256k1 with raw keccak256
+
+    IMPORTANT: Uses raw keccak256 hashing (NOT EIP-191 encode_defunct)
+    to match server-side verification in @xache/crypto.
     """
     try:
-        # Create account from private key
-        account = Account.from_key(f"0x{private_key}")
+        # Create private key object
+        pk_bytes = bytes.fromhex(private_key)
+        pk = eth_keys.PrivateKey(pk_bytes)
 
-        # Encode message for Ethereum signing
-        message_hash = encode_defunct(text=message)
+        # Hash message with raw keccak256 (NOT EIP-191 which adds prefix)
+        message_bytes = message.encode('utf-8')
+        message_hash = keccak(message_bytes)
 
-        # Sign the message
-        signed = account.sign_message(message_hash)
+        # Sign the raw hash
+        signature = pk.sign_msg_hash(message_hash)
 
-        # Return signature as hex without 0x prefix
-        return signed.signature.hex()[2:]
+        # Format as r + s + v (65 bytes = 130 hex chars)
+        # Add 27 to recovery id for Ethereum compatibility (v = 27 or 28)
+        r = signature.r.to_bytes(32, 'big')
+        s = signature.s.to_bytes(32, 'big')
+        v = bytes([signature.v + 27])  # Convert recovery id (0/1) to v (27/28)
+
+        # Return concatenated signature as hex without 0x prefix
+        return (r + s + v).hex()
     except Exception as e:
         raise ValueError(f"EVM signing failed: {str(e)}")
 
@@ -115,6 +130,8 @@ def sign_message_evm(message: str, private_key: str) -> str:
 def sign_message_solana(message: str, private_key: str) -> str:
     """
     Sign message using Solana ed25519
+
+    IMPORTANT: Returns base58-encoded signature to match server-side verification.
     """
     try:
         # Convert hex private key to bytes
@@ -135,8 +152,8 @@ def sign_message_solana(message: str, private_key: str) -> str:
         message_bytes = message.encode('utf-8')
         signature = keypair.sign_message(message_bytes)
 
-        # Return signature as hex
-        return bytes(signature).hex()
+        # Return signature as base58 (NOT hex) to match server-side verification
+        return base58.b58encode(bytes(signature)).decode('ascii')
     except Exception as e:
         raise ValueError(f"Solana signing failed: {str(e)}")
 

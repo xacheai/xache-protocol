@@ -71,7 +71,7 @@ from .extraction import (
     XacheExtractionTool,
 )
 
-from .config import XacheConfig, get_config, set_config
+from .config import XacheConfig, get_config, set_config, clear_config
 
 __version__ = "0.1.0"
 __all__ = [
@@ -79,6 +79,7 @@ __all__ = [
     "XacheConfig",
     "get_config",
     "set_config",
+    "clear_config",
     # Tool factory
     "xache_tools",
     "create_xache_client",
