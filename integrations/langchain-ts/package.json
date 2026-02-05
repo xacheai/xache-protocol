@@ -51,7 +51,7 @@
     "langchain": ">=0.3.37"
   },
   "dependencies": {
-    "@xache/sdk": "workspace:*",
+    "@xache/sdk": "^5.4.0",
     "zod": "^3.22.0"
   },
   "devDependencies": {
