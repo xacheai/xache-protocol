@@ -33,6 +33,7 @@ class MemoryService:
         data: Dict[str, Any],
         storage_tier: str,
         metadata: Optional[Dict[str, Any]] = None,
+        anchoring: Optional[str] = None,
     ) -> StoreMemoryResponse:
         """
         Store encrypted memory per LLD §2.4
@@ -57,15 +58,20 @@ class MemoryService:
         # Encrypt data client-side using PyNaCl
         encrypted_data = self._encrypt_data(data, key)
 
+        # Build request body
+        request_body: Dict[str, Any] = {
+            "encryptedData": encrypted_data,
+            "storageTier": storage_tier,
+            "metadata": metadata,
+        }
+        if anchoring == "immediate":
+            request_body["anchoring"] = "immediate"
+
         # Make API request with automatic 402 payment
         response = await self.client.request_with_payment(
             "POST",
             "/v1/memory/store",
-            {
-                "encryptedData": encrypted_data,
-                "storageTier": storage_tier,
-                "metadata": metadata,
-            },
+            request_body,
         )
 
         if not response.success or not response.data:
@@ -77,9 +83,12 @@ class MemoryService:
             storage_tier=resp_data["storageTier"],
             size=resp_data["size"],
             receipt_id=resp_data["receiptId"],
+            anchoring_tier=resp_data.get("anchoringTier"),
+            anchoring_status=resp_data.get("anchoringStatus"),
+            estimated_anchor_time=resp_data.get("estimatedAnchorTime"),
         )
 
-    async def retrieve(self, memory_id: str) -> RetrieveMemoryResponse:
+    async def retrieve(self, memory_id: str, anchoring: Optional[str] = None) -> RetrieveMemoryResponse:
         """
         Retrieve encrypted memory per LLD §2.4
         Cost: $0.005 (automatic 402 payment)
@@ -87,11 +96,16 @@ class MemoryService:
         if not memory_id:
             raise ValueError("memory_id is required")
 
+        # Build request body
+        retrieve_body: Dict[str, Any] = {"memoryId": memory_id}
+        if anchoring == "immediate":
+            retrieve_body["anchoring"] = "immediate"
+
         # Make API request with automatic 402 payment
         response = await self.client.request_with_payment(
             "POST",
             "/v1/memory/retrieve",
-            {"memoryId": memory_id},
+            retrieve_body,
         )
 
         if not response.success or not response.data:
@@ -111,6 +125,9 @@ class MemoryService:
             storage_tier=resp_data["storageTier"],
             metadata=resp_data.get("metadata"),
             receipt_id=resp_data["receiptId"],
+            anchoring_tier=resp_data.get("anchoringTier"),
+            anchoring_status=resp_data.get("anchoringStatus"),
+            estimated_anchor_time=resp_data.get("estimatedAnchorTime"),
         )
 
     async def delete(self, memory_id: str) -> Dict[str, Any]:

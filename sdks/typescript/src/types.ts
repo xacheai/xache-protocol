@@ -526,6 +526,9 @@ export interface StoreMemoryRequest {
 
   /** @deprecated Use subject.tenantId instead */
   tenantId?: TenantId;
+
+  /** Opt-in immediate anchoring (5-min instead of daily). Adds $0.005/receipt surcharge. */
+  anchoring?: 'immediate';
 }
 
 /**
@@ -536,6 +539,9 @@ export interface StoreMemoryResponse {
   storageTier: StorageTier;
   size: number;
   receiptId: string;
+  anchoringTier?: 'daily' | 'immediate';
+  anchoringStatus?: 'pending' | 'anchored';
+  estimatedAnchorTime?: string;
 }
 
 /**
@@ -552,6 +558,9 @@ export interface RetrieveMemoryRequest {
    * access to the memory based on its scope.
    */
   subject?: SubjectRetrievalContext;
+
+  /** Opt-in immediate anchoring (5-min instead of daily). Adds $0.005/receipt surcharge. */
+  anchoring?: 'immediate';
 }
 
 /**
@@ -563,6 +572,9 @@ export interface RetrieveMemoryResponse {
   storageTier: StorageTier;
   metadata?: Record<string, unknown>;
   receiptId: string;
+  anchoringTier?: 'daily' | 'immediate';
+  anchoringStatus?: 'pending' | 'anchored';
+  estimatedAnchorTime?: string;
 }
 
 /**
@@ -733,6 +745,8 @@ export interface ContributeHeuristicRequest {
   contextType?: string;
   /** Optional metadata */
   metadata?: Record<string, unknown>;
+  /** Opt-in immediate anchoring (5-min instead of daily). Adds $0.005/receipt surcharge. */
+  anchoring?: 'immediate';
   [key: string]: unknown;
 }
 
@@ -745,6 +759,9 @@ export interface ContributeHeuristicResponse {
   domain: string;
   tags: string[];
   receiptId: string;
+  anchoringTier?: 'daily' | 'immediate';
+  anchoringStatus?: 'pending' | 'anchored';
+  estimatedAnchorTime?: string;
 }
 
 /**
@@ -754,6 +771,8 @@ export interface QueryCollectiveRequest {
   queryText: string;
   domain?: string;
   limit?: number;
+  /** Opt-in immediate anchoring (5-min instead of daily). Adds $0.005/receipt surcharge. */
+  anchoring?: 'immediate';
   [key: string]: unknown;
 }
 
@@ -765,6 +784,9 @@ export interface QueryCollectiveResponse {
   totalCost: string;
   royaltiesUSD: string;
   receiptId: string;
+  anchoringTier?: 'daily' | 'immediate';
+  anchoringStatus?: 'pending' | 'anchored';
+  estimatedAnchorTime?: string;
 }
 
 /**

@@ -165,6 +165,7 @@ class StoreMemoryRequest:
     data: Dict[str, Any]
     storage_tier: StorageTier
     metadata: Optional[Dict[str, Any]] = None
+    anchoring: Optional[str] = None
 
 
 @dataclass
@@ -174,12 +175,16 @@ class StoreMemoryResponse:
     storage_tier: StorageTier
     size: int
     receipt_id: str
+    anchoring_tier: Optional[str] = None
+    anchoring_status: Optional[str] = None
+    estimated_anchor_time: Optional[str] = None
 
 
 @dataclass
 class RetrieveMemoryRequest:
     """Memory retrieve request"""
     memory_id: str
+    anchoring: Optional[str] = None
 
 
 @dataclass
@@ -190,6 +195,9 @@ class RetrieveMemoryResponse:
     storage_tier: StorageTier
     metadata: Optional[Dict[str, Any]]
     receipt_id: str
+    anchoring_tier: Optional[str] = None
+    anchoring_status: Optional[str] = None
+    estimated_anchor_time: Optional[str] = None
 
 
 @dataclass
@@ -262,6 +270,7 @@ class ContributeHeuristicRequest:
     encrypted_content_ref: str  # Reference to encrypted content in R2
     context_type: Optional[str] = None
     metadata: Optional[Dict[str, Any]] = None
+    anchoring: Optional[str] = None
 
 
 @dataclass
@@ -272,6 +281,9 @@ class ContributeHeuristicResponse:
     domain: str
     tags: List[str]
     receipt_id: str
+    anchoring_tier: Optional[str] = None
+    anchoring_status: Optional[str] = None
+    estimated_anchor_time: Optional[str] = None
 
 
 @dataclass
@@ -292,6 +304,7 @@ class QueryCollectiveRequest:
     query_text: str
     domain: Optional[str] = None
     limit: int = 10
+    anchoring: Optional[str] = None
 
 
 @dataclass
@@ -301,6 +314,9 @@ class QueryCollectiveResponse:
     total_cost: str
     royalties_usd: str
     receipt_id: str
+    anchoring_tier: Optional[str] = None
+    anchoring_status: Optional[str] = None
+    estimated_anchor_time: Optional[str] = None
 
 
 @dataclass

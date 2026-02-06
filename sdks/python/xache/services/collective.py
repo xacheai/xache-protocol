@@ -26,6 +26,7 @@ class CollectiveService:
         encrypted_content_ref: str,
         context_type: Optional[str] = None,
         metadata: Optional[dict] = None,
+        anchoring: Optional[str] = None,
     ) -> ContributeHeuristicResponse:
         """
         Contribute a heuristic to the collective per LLD §2.5
@@ -45,23 +46,27 @@ class CollectiveService:
             pattern, pattern_hash, domain, tags, metrics, encrypted_content_ref
         )
 
+        request_body = {
+            "pattern": pattern,
+            "patternHash": pattern_hash,
+            "domain": domain,
+            "tags": tags,
+            "metrics": {
+                "successRate": metrics.success_rate,
+                "sampleSize": metrics.sample_size,
+                "confidence": metrics.confidence,
+            },
+            "encryptedContentRef": encrypted_content_ref,
+            "contextType": context_type,
+            "metadata": metadata,
+        }
+        if anchoring == "immediate":
+            request_body["anchoring"] = "immediate"
+
         response = await self.client.request_with_payment(
             "POST",
             "/v1/collective/contribute",
-            {
-                "pattern": pattern,
-                "patternHash": pattern_hash,
-                "domain": domain,
-                "tags": tags,
-                "metrics": {
-                    "successRate": metrics.success_rate,
-                    "sampleSize": metrics.sample_size,
-                    "confidence": metrics.confidence,
-                },
-                "encryptedContentRef": encrypted_content_ref,
-                "contextType": context_type,
-                "metadata": metadata,
-            },
+            request_body,
         )
 
         if not response.success or not response.data:
@@ -74,6 +79,9 @@ class CollectiveService:
             domain=data["domain"],
             tags=data["tags"],
             receipt_id=data["receiptId"],
+            anchoring_tier=data.get("anchoringTier"),
+            anchoring_status=data.get("anchoringStatus"),
+            estimated_anchor_time=data.get("estimatedAnchorTime"),
         )
 
     async def query(
@@ -81,6 +89,7 @@ class CollectiveService:
         query_text: str,
         domain: str = None,
         limit: int = 10,
+        anchoring: Optional[str] = None,
     ) -> QueryCollectiveResponse:
         """
         Query the collective for relevant heuristics per LLD §2.5
@@ -88,14 +97,18 @@ class CollectiveService:
         """
         self._validate_query_request(query_text, limit)
 
+        request_body = {
+            "queryText": query_text,
+            "domain": domain,
+            "limit": limit,
+        }
+        if anchoring == "immediate":
+            request_body["anchoring"] = "immediate"
+
         response = await self.client.request_with_payment(
             "POST",
             "/v1/collective/query",
-            {
-                "queryText": query_text,
-                "domain": domain,
-                "limit": limit,
-            },
+            request_body,
         )
 
         if not response.success or not response.data:
@@ -111,6 +124,9 @@ class CollectiveService:
             total_cost=data["totalCost"],
             royalties_usd=data["royaltiesUSD"],
             receipt_id=data["receiptId"],
+            anchoring_tier=data.get("anchoringTier"),
+            anchoring_status=data.get("anchoringStatus"),
+            estimated_anchor_time=data.get("estimatedAnchorTime"),
         )
 
     def _validate_contribute_request(

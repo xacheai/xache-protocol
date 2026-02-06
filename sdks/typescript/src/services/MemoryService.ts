@@ -106,6 +106,11 @@ export class MemoryService {
       expiresAt: request.expiresAt,
     };
 
+    // Add anchoring tier if immediate anchoring requested
+    if (request.anchoring === 'immediate') {
+      apiRequest.anchoring = 'immediate';
+    }
+
     // Add Subject Keys fields if provided
     // Support both subject object and deprecated flat fields
     if (request.subject) {
@@ -174,6 +179,11 @@ export class MemoryService {
     const requestBody: Record<string, unknown> = {
       storageKey: request.storageKey,
     };
+
+    // Add anchoring tier if immediate anchoring requested
+    if (request.anchoring === 'immediate') {
+      requestBody.anchoring = 'immediate';
+    }
 
     // Add Subject Keys fields if provided (for access control validation)
     // For retrieval, we use SubjectRetrievalContext which doesn't have scope
