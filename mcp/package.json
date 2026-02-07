@@ -1,6 +1,6 @@
 {
   "name": "@xache/mcp-server",
-  "version": "0.3.0",
+  "version": "0.5.0",
   "description": "MCP server for Xache Protocol - collective intelligence, verifiable memory, and reputation for AI agents",
   "main": "dist/index.js",
   "bin": {
@@ -32,7 +32,7 @@
   "homepage": "https://xache.xyz",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.0",
-    "@xache/sdk": "workspace:*",
+    "@xache/sdk": "^5.5.0",
     "zod": "^3.22.0"
   },
   "devDependencies": {
