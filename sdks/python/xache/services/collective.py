@@ -87,7 +87,7 @@ class CollectiveService:
     async def query(
         self,
         query_text: str,
-        domain: str = None,
+        domain: Optional[str] = None,
         limit: int = 10,
         anchoring: Optional[str] = None,
     ) -> QueryCollectiveResponse:
@@ -129,6 +129,41 @@ class CollectiveService:
             estimated_anchor_time=data.get("estimatedAnchorTime"),
         )
 
+    async def list_heuristics(
+        self,
+        domain: Optional[str] = None,
+        limit: Optional[int] = None,
+        offset: Optional[int] = None,
+    ) -> dict:
+        """
+        List heuristics in the collective.
+
+        Args:
+            domain: Filter by domain
+            limit: Max results
+            offset: Pagination offset
+
+        Returns:
+            Dict with heuristics list, total, limit, offset
+        """
+        params = []
+        if domain:
+            params.append(f"domain={domain}")
+        if limit is not None:
+            params.append(f"limit={limit}")
+        if offset is not None:
+            params.append(f"offset={offset}")
+
+        query = "&".join(params)
+        path = f"/v1/collective/heuristics?{query}" if query else "/v1/collective/heuristics"
+
+        response = await self.client.request("GET", path, skip_auth=True)
+
+        if not response.success or not response.data:
+            raise Exception("Failed to list heuristics")
+
+        return response.data
+
     def _validate_contribute_request(
         self,
         pattern: str,
@@ -137,7 +172,7 @@ class CollectiveService:
         tags: List[str],
         metrics: HeuristicMetrics,
         encrypted_content_ref: str,
-    ):
+    ) -> None:
         """Validate contribution request"""
         # Validate pattern
         if not pattern or len(pattern) < 10:
@@ -180,7 +215,7 @@ class CollectiveService:
         if not encrypted_content_ref or not isinstance(encrypted_content_ref, str):
             raise ValueError("encrypted_content_ref is required and must be a string")
 
-    def _validate_query_request(self, query_text: str, limit: int):
+    def _validate_query_request(self, query_text: str, limit: int) -> None:
         """Validate query request"""
         if not query_text or len(query_text) < 5:
             raise ValueError("query_text must be at least 5 characters")

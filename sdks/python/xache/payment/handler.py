@@ -232,7 +232,7 @@ class PaymentHandler:
 
         return False
 
-    def mark_payment_complete(self, challenge_id: str, transaction_hash: str):
+    def mark_payment_complete(self, challenge_id: str, transaction_hash: str) -> None:
         """Mark payment as completed (for testing)"""
         self.pending_payments[challenge_id] = {
             "success": True,

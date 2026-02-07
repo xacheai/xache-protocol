@@ -165,6 +165,12 @@ class StoreMemoryRequest:
     data: Dict[str, Any]
     storage_tier: StorageTier
     metadata: Optional[Dict[str, Any]] = None
+    context: Optional[str] = None
+    tags: Optional[List[str]] = None
+    subject_id: Optional[str] = None
+    scope: Optional[str] = None
+    segment_id: Optional[str] = None
+    tenant_id: Optional[str] = None
     anchoring: Optional[str] = None
 
 
@@ -198,6 +204,30 @@ class RetrieveMemoryResponse:
     anchoring_tier: Optional[str] = None
     anchoring_status: Optional[str] = None
     estimated_anchor_time: Optional[str] = None
+
+
+@dataclass
+class MemoryListItem:
+    """Memory list item (metadata only, no decryption)"""
+    storage_key: str
+    agent_did: str
+    storage_tier: StorageTier
+    size_bytes: int
+    created_at: str
+    accessed_at: str
+    context: Optional[str] = None
+    tags: Optional[List[str]] = None
+    metadata: Optional[Dict[str, Any]] = None
+    updated_at: Optional[str] = None
+
+
+@dataclass
+class ListMemoriesResponse:
+    """List memories response"""
+    memories: List[MemoryListItem]
+    total: int
+    limit: int
+    offset: int
 
 
 @dataclass

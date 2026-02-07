@@ -30,10 +30,19 @@ from .tools import (
     XacheCollectiveContributeTool,
     XacheCollectiveQueryTool,
     XacheReputationTool,
+    XacheGraphExtractTool,
+    XacheGraphLoadTool,
+    XacheGraphQueryTool,
+    XacheGraphAskTool,
+    XacheGraphAddEntityTool,
+    XacheGraphAddRelationshipTool,
+    XacheGraphMergeEntitiesTool,
+    XacheGraphEntityHistoryTool,
+    XacheExtractionTool,
 )
 from .memory import XacheMemory, XacheShortTermMemory, XacheLongTermMemory
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 __all__ = [
     # Tools
     "xache_tools",
@@ -42,6 +51,17 @@ __all__ = [
     "XacheCollectiveContributeTool",
     "XacheCollectiveQueryTool",
     "XacheReputationTool",
+    # Graph Tools
+    "XacheGraphExtractTool",
+    "XacheGraphLoadTool",
+    "XacheGraphQueryTool",
+    "XacheGraphAskTool",
+    "XacheGraphAddEntityTool",
+    "XacheGraphAddRelationshipTool",
+    "XacheGraphMergeEntitiesTool",
+    "XacheGraphEntityHistoryTool",
+    # Extraction
+    "XacheExtractionTool",
     # Memory
     "XacheMemory",
     "XacheShortTermMemory",

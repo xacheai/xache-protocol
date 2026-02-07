@@ -344,6 +344,254 @@ def sync_to_xache(
     )
 
 
+# =============================================================================
+# Knowledge Graph Functions
+# =============================================================================
+
+
+def graph_extract(
+    trace: str,
+    context_hint: str = "",
+    config: Optional[XacheConfig] = None,
+    llm_provider: str = "anthropic",
+    llm_api_key: str = "",
+    llm_model: str = "",
+) -> Dict[str, Any]:
+    """
+    Extract entities and relationships from text into the knowledge graph.
+
+    Args:
+        trace: Text to extract entities from
+        context_hint: Domain hint for extraction
+        config: Optional config override
+        llm_provider: LLM provider for extraction
+        llm_api_key: LLM API key
+        llm_model: LLM model override
+
+    Returns:
+        Dict with entities and relationships
+    """
+    client = create_xache_client(config)
+
+    llm_config: Dict[str, Any] = {"type": "xache-managed", "provider": "anthropic", "model": llm_model or None}
+    if llm_api_key and llm_provider:
+        llm_config = {"type": "api-key", "provider": llm_provider, "apiKey": llm_api_key, "model": llm_model or None}
+
+    async def _extract():
+        async with client as c:
+            return await c.graph.extract(
+                trace=trace, llm_config=llm_config,
+                subject={"scope": "GLOBAL"},
+                options={"contextHint": context_hint, "confidenceThreshold": 0.7},
+            )
+
+    return run_sync(_extract())
+
+
+def graph_query(
+    start_entity: str,
+    depth: int = 2,
+    config: Optional[XacheConfig] = None,
+) -> Dict[str, Any]:
+    """
+    Query the knowledge graph around a specific entity.
+
+    Args:
+        start_entity: Entity name to start from
+        depth: Number of hops (default: 2)
+        config: Optional config override
+
+    Returns:
+        Dict with entities and relationships in the subgraph
+    """
+    client = create_xache_client(config)
+
+    async def _query():
+        async with client as c:
+            graph = await c.graph.query(
+                subject={"scope": "GLOBAL"}, start_entity=start_entity, depth=depth,
+            )
+            return graph.to_json()
+
+    return run_sync(_query())
+
+
+def graph_ask(
+    question: str,
+    config: Optional[XacheConfig] = None,
+    llm_provider: str = "anthropic",
+    llm_api_key: str = "",
+    llm_model: str = "",
+) -> Dict[str, Any]:
+    """
+    Ask a natural language question about the knowledge graph.
+
+    Args:
+        question: The question to ask
+        config: Optional config override
+        llm_provider: LLM provider
+        llm_api_key: LLM API key
+        llm_model: LLM model override
+
+    Returns:
+        Dict with answer, confidence, and sources
+    """
+    client = create_xache_client(config)
+
+    llm_config: Dict[str, Any] = {"type": "xache-managed", "provider": "anthropic", "model": llm_model or None}
+    if llm_api_key and llm_provider:
+        llm_config = {"type": "api-key", "provider": llm_provider, "apiKey": llm_api_key, "model": llm_model or None}
+
+    async def _ask():
+        async with client as c:
+            return await c.graph.ask(
+                subject={"scope": "GLOBAL"}, question=question, llm_config=llm_config,
+            )
+
+    return run_sync(_ask())
+
+
+def graph_add_entity(
+    name: str,
+    type: str,
+    summary: str = "",
+    config: Optional[XacheConfig] = None,
+) -> Dict[str, Any]:
+    """
+    Add an entity to the knowledge graph.
+
+    Args:
+        name: Entity display name
+        type: Entity type (person, organization, tool, concept, etc.)
+        summary: Brief description
+        config: Optional config override
+
+    Returns:
+        Dict with entity details
+    """
+    client = create_xache_client(config)
+
+    async def _add():
+        async with client as c:
+            return await c.graph.add_entity(
+                subject={"scope": "GLOBAL"}, name=name, type=type, summary=summary,
+            )
+
+    return run_sync(_add())
+
+
+def graph_add_relationship(
+    from_entity: str,
+    to_entity: str,
+    type: str,
+    description: str = "",
+    config: Optional[XacheConfig] = None,
+) -> Dict[str, Any]:
+    """
+    Create a relationship between two entities.
+
+    Args:
+        from_entity: Source entity name
+        to_entity: Target entity name
+        type: Relationship type
+        description: Relationship description
+        config: Optional config override
+
+    Returns:
+        Dict with relationship details
+    """
+    client = create_xache_client(config)
+
+    async def _add():
+        async with client as c:
+            return await c.graph.add_relationship(
+                subject={"scope": "GLOBAL"}, from_entity=from_entity,
+                to_entity=to_entity, type=type, description=description,
+            )
+
+    return run_sync(_add())
+
+
+def graph_load(
+    entity_types: Optional[List[str]] = None,
+    valid_at: Optional[str] = None,
+    config: Optional[XacheConfig] = None,
+) -> Dict[str, Any]:
+    """
+    Load the full knowledge graph.
+
+    Args:
+        entity_types: Filter to specific entity types
+        valid_at: Load graph as it existed at this time (ISO8601)
+        config: Optional config override
+
+    Returns:
+        Dict with entities and relationships
+    """
+    client = create_xache_client(config)
+
+    async def _load():
+        async with client as c:
+            graph = await c.graph.load(
+                subject={"scope": "GLOBAL"}, entity_types=entity_types, valid_at=valid_at,
+            )
+            return graph.to_json()
+
+    return run_sync(_load())
+
+
+def graph_merge_entities(
+    source_name: str,
+    target_name: str,
+    config: Optional[XacheConfig] = None,
+) -> Dict[str, Any]:
+    """
+    Merge two entities into one. The source is superseded, the target is updated.
+
+    Args:
+        source_name: Entity to merge FROM (will be superseded)
+        target_name: Entity to merge INTO (will be updated)
+        config: Optional config override
+
+    Returns:
+        Dict with merged entity details
+    """
+    client = create_xache_client(config)
+
+    async def _merge():
+        async with client as c:
+            return await c.graph.merge_entities(
+                subject={"scope": "GLOBAL"}, source_name=source_name, target_name=target_name,
+            )
+
+    return run_sync(_merge())
+
+
+def graph_entity_history(
+    name: str,
+    config: Optional[XacheConfig] = None,
+) -> Dict[str, Any]:
+    """
+    Get the version history of an entity.
+
+    Args:
+        name: Entity name to look up history for
+        config: Optional config override
+
+    Returns:
+        Dict with version history
+    """
+    client = create_xache_client(config)
+
+    async def _history():
+        async with client as c:
+            return await c.graph.get_entity_history(
+                subject={"scope": "GLOBAL"}, name=name,
+            )
+
+    return run_sync(_history())
+
+
 def _get_reputation_level(score: float) -> str:
     """Convert numeric score to level name"""
     if score >= 0.9:
@@ -567,6 +815,144 @@ class XacheSyncTool:
         return f"Synced to Xache. ID: {memory_id}, Receipt: {receipt_id}"
 
 
+@dataclass
+class XacheGraphExtractTool:
+    """OpenClaw tool for extracting entities/relationships from text."""
+    name: str = "xache_graph_extract"
+    description: str = (
+        "Extract entities and relationships from text into the knowledge graph."
+    )
+
+    def run(self, trace: str, context_hint: str = "") -> str:
+        result = graph_extract(trace, context_hint)
+        entities = result.get("entities", [])
+        rels = result.get("relationships", [])
+        if not entities and not rels:
+            return "No entities or relationships extracted."
+        output = f"Extracted {len(entities)} entities, {len(rels)} relationships.\n"
+        for e in entities:
+            output += f"  {e.get('name', '')} [{e.get('type', '')}]\n"
+        return output
+
+
+@dataclass
+class XacheGraphQueryTool:
+    """OpenClaw tool for querying the knowledge graph."""
+    name: str = "xache_graph_query"
+    description: str = (
+        "Query the knowledge graph around a specific entity."
+    )
+
+    def run(self, start_entity: str, depth: int = 2) -> str:
+        data = graph_query(start_entity, depth)
+        entities = data.get("entities", [])
+        if not entities:
+            return f'No entities found connected to "{start_entity}".'
+        output = f"Subgraph: {len(entities)} entities\n"
+        for e in entities:
+            output += f"  {e.get('name', '')} [{e.get('type', '')}]\n"
+        return output
+
+
+@dataclass
+class XacheGraphAskTool:
+    """OpenClaw tool for asking questions about the knowledge graph."""
+    name: str = "xache_graph_ask"
+    description: str = (
+        "Ask a natural language question about the knowledge graph."
+    )
+
+    def run(self, question: str) -> str:
+        answer = graph_ask(question)
+        output = f"Answer: {answer.get('answer', '')}\nConfidence: {int((answer.get('confidence', 0)) * 100)}%"
+        sources = answer.get("sources", [])
+        if sources:
+            output += "\nSources: " + ", ".join(f"{s.get('name', '')} [{s.get('type', '')}]" for s in sources)
+        return output
+
+
+@dataclass
+class XacheGraphAddEntityTool:
+    """OpenClaw tool for adding entities to the knowledge graph."""
+    name: str = "xache_graph_add_entity"
+    description: str = "Add an entity to the knowledge graph."
+
+    def run(self, name: str, type: str, summary: str = "") -> str:
+        entity = graph_add_entity(name, type, summary)
+        return f'Created entity "{entity.get("name", name)}" [{entity.get("type", type)}]'
+
+
+@dataclass
+class XacheGraphAddRelationshipTool:
+    """OpenClaw tool for creating relationships between entities."""
+    name: str = "xache_graph_add_relationship"
+    description: str = "Create a relationship between two entities in the knowledge graph."
+
+    def run(self, from_entity: str, to_entity: str, type: str, description: str = "") -> str:
+        graph_add_relationship(from_entity, to_entity, type, description)
+        return f"Created relationship: {from_entity} → {type} → {to_entity}"
+
+
+@dataclass
+class XacheGraphLoadTool:
+    """OpenClaw tool for loading the full knowledge graph."""
+    name: str = "xache_graph_load"
+    description: str = (
+        "Load the full knowledge graph. Returns all entities and relationships."
+    )
+
+    def run(self, entity_types: Optional[List[str]] = None, valid_at: Optional[str] = None) -> str:
+        data = graph_load(entity_types, valid_at)
+        entities = data.get("entities", [])
+        if not entities:
+            return "Knowledge graph is empty."
+        output = f"Knowledge graph: {len(entities)} entities, {len(data.get('relationships', []))} relationships\n"
+        for e in entities:
+            output += f"  {e.get('name', '')} [{e.get('type', '')}]"
+            if e.get("summary"):
+                output += f" — {e['summary'][:80]}"
+            output += "\n"
+        return output
+
+
+@dataclass
+class XacheGraphMergeEntitiesTool:
+    """OpenClaw tool for merging two entities."""
+    name: str = "xache_graph_merge_entities"
+    description: str = (
+        "Merge two entities into one. Source is superseded, target is updated."
+    )
+
+    def run(self, source_name: str, target_name: str) -> str:
+        merged = graph_merge_entities(source_name, target_name)
+        return f'Merged "{source_name}" into "{target_name}". Result: {merged.get("name", target_name)} [{merged.get("type", "")}]'
+
+
+@dataclass
+class XacheGraphEntityHistoryTool:
+    """OpenClaw tool for getting entity version history."""
+    name: str = "xache_graph_entity_history"
+    description: str = (
+        "Get the full version history of an entity."
+    )
+
+    def run(self, name: str) -> str:
+        versions = graph_entity_history(name)
+        if not versions:
+            return f'No history found for entity "{name}".'
+        if isinstance(versions, list):
+            version_list = versions
+        else:
+            version_list = versions if isinstance(versions, list) else [versions]
+        output = f'History for "{name}": {len(version_list)} version(s)\n'
+        for v in version_list:
+            output += f"  v{v.get('version', '?')} — {v.get('name', '')} [{v.get('type', '')}]"
+            if v.get("summary"):
+                output += f" | {v['summary'][:80]}"
+            output += "\n"
+        return output
+
+
 # =============================================================================
 # Tool Factory
 # =============================================================================
@@ -580,6 +966,7 @@ def xache_tools(
     include_reputation: bool = True,
     include_sync: bool = True,
     include_extraction: bool = False,  # Requires LLM
+    include_graph: bool = True,
     llm: Optional[Callable[[str], str]] = None,  # Required for extraction
 ) -> List:
     """
@@ -663,5 +1050,17 @@ def xache_tools(
     if include_extraction:
         from .extraction import XacheExtractionTool
         tools.append(XacheExtractionTool(llm=llm))
+
+    if include_graph:
+        tools.extend([
+            XacheGraphExtractTool(),
+            XacheGraphLoadTool(),
+            XacheGraphQueryTool(),
+            XacheGraphAskTool(),
+            XacheGraphAddEntityTool(),
+            XacheGraphAddRelationshipTool(),
+            XacheGraphMergeEntitiesTool(),
+            XacheGraphEntityHistoryTool(),
+        ])
 
     return tools

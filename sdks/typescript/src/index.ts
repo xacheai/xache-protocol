@@ -107,6 +107,7 @@ export { RoyaltyService } from './services/RoyaltyService';
 export { WorkspaceService } from './services/WorkspaceService';
 export { OwnerService } from './services/OwnerService';
 export { WalletService } from './services/WalletService';
+export { GraphService } from './services/GraphService';
 
 // Facilitator types (x402 v2)
 export type {
@@ -185,6 +186,33 @@ export type {
   OptimizationInsight,
   Memory,
 } from './services/MemoryHelpers';
+
+// Knowledge graph types + engine
+export { Graph } from './graph/GraphEngine';
+export type {
+  Entity,
+  Relationship,
+  EntityType as GraphEntityType,
+  RelationshipType,
+  GraphLoadParams,
+  GraphExtractParams,
+  GraphQueryParams,
+  GraphAskParams,
+  AddEntityParams,
+  AddRelationshipParams,
+  MergeEntitiesParams,
+  EntityAtParams,
+  EntityHistoryParams,
+  GraphExtractionResult,
+  GraphExtractionTemporalUpdate,
+  GraphAnswer,
+} from './graph/types';
+
+// Entity key derivation (for knowledge graph)
+export {
+  deriveEntityKey,
+  batchDeriveEntityKeys,
+} from './crypto/subject';
 
 // Standard context conventions (SDK layer only)
 export { StandardContexts } from './constants/StandardContexts';

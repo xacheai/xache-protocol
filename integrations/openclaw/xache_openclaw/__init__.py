@@ -51,6 +51,15 @@ from .tools import (
     memory_retrieve,
     check_reputation,
     sync_to_xache,
+    # Graph functions
+    graph_extract,
+    graph_load,
+    graph_query,
+    graph_ask,
+    graph_add_entity,
+    graph_add_relationship,
+    graph_merge_entities,
+    graph_entity_history,
     # OpenClaw-ready tool classes
     XacheCollectiveContributeTool,
     XacheCollectiveQueryTool,
@@ -58,6 +67,15 @@ from .tools import (
     XacheMemoryRetrieveTool,
     XacheReputationTool,
     XacheSyncTool,
+    # Graph tool classes
+    XacheGraphExtractTool,
+    XacheGraphLoadTool,
+    XacheGraphQueryTool,
+    XacheGraphAskTool,
+    XacheGraphAddEntityTool,
+    XacheGraphAddRelationshipTool,
+    XacheGraphMergeEntitiesTool,
+    XacheGraphEntityHistoryTool,
 )
 
 from .extraction import (
@@ -73,7 +91,7 @@ from .extraction import (
 
 from .config import XacheConfig, get_config, set_config, clear_config
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 __all__ = [
     # Config
     "XacheConfig",
@@ -90,6 +108,15 @@ __all__ = [
     "memory_retrieve",
     "check_reputation",
     "sync_to_xache",
+    # Graph functions
+    "graph_extract",
+    "graph_load",
+    "graph_query",
+    "graph_ask",
+    "graph_add_entity",
+    "graph_add_relationship",
+    "graph_merge_entities",
+    "graph_entity_history",
     # Tool classes
     "XacheCollectiveContributeTool",
     "XacheCollectiveQueryTool",
@@ -97,6 +124,15 @@ __all__ = [
     "XacheMemoryRetrieveTool",
     "XacheReputationTool",
     "XacheSyncTool",
+    # Graph tool classes
+    "XacheGraphExtractTool",
+    "XacheGraphLoadTool",
+    "XacheGraphQueryTool",
+    "XacheGraphAskTool",
+    "XacheGraphAddEntityTool",
+    "XacheGraphAddRelationshipTool",
+    "XacheGraphMergeEntitiesTool",
+    "XacheGraphEntityHistoryTool",
     # Extraction
     "MemoryExtractor",
     "ExtractedMemory",

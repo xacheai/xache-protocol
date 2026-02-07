@@ -206,6 +206,59 @@ export function validateSubjectContext(context: SubjectContext): void {
 }
 
 /**
+ * Derives an HMAC entity key for knowledge graph entities.
+ * Uses the same HMAC-SHA512/256 as subject keys but with a different domain
+ * separator to prevent cross-purpose collisions.
+ *
+ * Entity names are normalized (lowercase, trimmed) before HMAC so
+ * "Alice Chen" and "alice chen" produce the same key.
+ *
+ * @param agentKey - Agent's encryption key (32 bytes, base64)
+ * @param entityName - Raw entity name (e.g., "Alice Chen", "Acme Corp")
+ * @returns 64-character hex string (HMAC-derived entity key)
+ */
+export async function deriveEntityKey(
+  agentKey: string,
+  entityName: string,
+): Promise<SubjectId> {
+  const normalized = entityName.trim().toLowerCase();
+  return deriveSubjectId(agentKey, normalized, { domain: 'xache:entity:v1' });
+}
+
+/**
+ * Batch derives entity keys for multiple entity names.
+ *
+ * @param agentKey - Agent's encryption key (32 bytes, base64)
+ * @param entityNames - Array of entity names
+ * @returns Map of normalized name to derived entity key
+ */
+export async function batchDeriveEntityKeys(
+  agentKey: string,
+  entityNames: string[],
+): Promise<Map<string, SubjectId>> {
+  await ensureSodiumReady();
+
+  const results = new Map<string, SubjectId>();
+  const keyBytes = sodium.from_base64(agentKey);
+  if (keyBytes.length !== 32) {
+    throw new Error(`Invalid agent key length: expected 32 bytes, got ${keyBytes.length}`);
+  }
+
+  const domain = 'xache:entity:v1';
+  const hmacKey = sodium.crypto_generichash(32, keyBytes, undefined);
+
+  for (const name of entityNames) {
+    const normalized = name.trim().toLowerCase();
+    const input = `${domain}:${normalized}`;
+    const inputBytes = new TextEncoder().encode(input);
+    const hmac = sodium.crypto_auth(inputBytes, hmacKey);
+    results.set(normalized, sodium.to_hex(hmac));
+  }
+
+  return results;
+}
+
+/**
  * Batch derives subject IDs for multiple raw identifiers.
  * More efficient than calling deriveSubjectId multiple times.
  *

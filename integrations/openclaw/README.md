@@ -145,6 +145,48 @@ tool.run()
 # Output: "Reputation Score: 0.75/1.00 (Trusted)"
 ```
 
+### Knowledge Graph
+
+**`XacheGraphExtractTool`** - Extract entities/relationships from text
+```python
+tool.run(trace="John works at Acme Corp as a senior engineer.", context_hint="engineering")
+```
+
+**`XacheGraphLoadTool`** - Load the full knowledge graph
+```python
+tool.run()  # Returns all entities and relationships
+```
+
+**`XacheGraphQueryTool`** - Query graph around an entity
+```python
+tool.run(start_entity="John Smith", depth=2)
+```
+
+**`XacheGraphAskTool`** - Ask natural language questions
+```python
+tool.run(question="Who manages the engineering team?")
+```
+
+**`XacheGraphAddEntityTool`** - Add entities manually
+```python
+tool.run(name="Acme Corp", type="organization", summary="Tech company")
+```
+
+**`XacheGraphAddRelationshipTool`** - Create relationships
+```python
+tool.run(from_entity="John", to_entity="Acme Corp", type="works_at")
+```
+
+**`XacheGraphMergeEntitiesTool`** - Merge duplicate entities
+```python
+tool.run(source_name="J. Smith", target_name="John Smith")
+```
+
+**`XacheGraphEntityHistoryTool`** - View entity version history
+```python
+tool.run(name="John Smith")
+```
+
 ### Sync
 
 **`XacheSyncTool`** - Backup critical local memories

@@ -198,9 +198,15 @@ export class HttpClient {
    * Handle response and parse
    */
   private async handleResponse<T>(response: Response): Promise<APIResponse<T>> {
+    const emptyMeta = {
+      requestId: response.headers.get('X-Request-ID') || response.headers.get('x-request-id') || '',
+      timestamp: new Date().toISOString(),
+      duration: 0,
+    };
+
     // Handle 204 No Content and empty responses
     if (response.status === 204) {
-      return { success: true, data: undefined as T };
+      return { success: true, data: undefined as T, meta: emptyMeta };
     }
 
     const contentLength = response.headers.get('content-length');
@@ -208,7 +214,7 @@ export class HttpClient {
 
     // Handle empty body responses
     if (contentLength === '0' || (!contentType.includes('application/json') && response.ok)) {
-      return { success: true, data: undefined as T };
+      return { success: true, data: undefined as T, meta: emptyMeta };
     }
 
     let json: any;
@@ -217,7 +223,7 @@ export class HttpClient {
       const text = await response.text();
       // Handle truly empty responses
       if (!text || text.trim() === '') {
-        return { success: true, data: undefined as T };
+        return { success: true, data: undefined as T, meta: emptyMeta };
       }
       json = JSON.parse(text);
     } catch (error) {

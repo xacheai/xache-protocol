@@ -72,6 +72,29 @@ print(f"Data: {retrieved.data}")
 await client.memory.delete(memory.memory_id)
 ```
 
+### Batch Memory Operations
+
+```python
+# Store multiple memories in one request (batch pricing)
+batch_result = await client.memory.store_batch(
+    items=[
+        {"data": {"key": "value1"}, "storage_tier": "hot"},
+        {"data": {"key": "value2"}, "storage_tier": "warm"},
+        {"data": {"key": "value3"}, "storage_tier": "cold"},
+    ],
+)
+print(f"Success: {batch_result.success_count}")
+print(f"Failed: {batch_result.failure_count}")
+
+# Retrieve multiple memories in one request (single payment)
+retrieve_result = await client.memory.retrieve_batch(
+    storage_keys=["mem_123", "mem_456", "mem_789"],
+)
+print(f"Success: {retrieve_result.success_count}")
+for result in retrieve_result.results:
+    print(f"{result.storage_key}: {result.data}")
+```
+
 ### Collective Intelligence
 
 ```python

@@ -2,7 +2,7 @@
 Session Service - x402 v2 wallet session management
 """
 
-from typing import Optional, List
+from typing import Any, Dict, Optional, List
 from dataclasses import dataclass
 
 
@@ -250,6 +250,86 @@ class SessionService:
 
         sessions_data = response.data.get("sessions", [])
         return [self._parse_session(s) for s in sessions_data]
+
+    async def list_by_wallet(self, wallet_address: str) -> List[WalletSession]:
+        """
+        List sessions for a specific wallet address.
+
+        Args:
+            wallet_address: Wallet address to filter by
+
+        Returns:
+            List of wallet sessions
+        """
+        response = await self.client.request(
+            "GET",
+            f"/v1/sessions/wallet/{wallet_address}",
+            skip_auth=True,
+        )
+
+        if not response.success:
+            raise Exception(
+                response.error.get("message", "Failed to list sessions")
+                if response.error
+                else "Failed to list sessions"
+            )
+
+        sessions_data = (response.data or {}).get("sessions", [])
+        return [self._parse_session(s) for s in sessions_data]
+
+    async def update(
+        self,
+        session_id: str,
+        wallet_address: str,
+        amount_spent: Optional[str] = None,
+        scope: Optional[List[str]] = None,
+    ) -> WalletSession:
+        """
+        Update a session.
+
+        Args:
+            session_id: Session identifier
+            wallet_address: Wallet address
+            amount_spent: Updated amount spent
+            scope: Updated scope list
+
+        Returns:
+            Updated wallet session
+        """
+        updates: Dict[str, Any] = {}
+        if amount_spent is not None:
+            updates["amountSpent"] = amount_spent
+        if scope is not None:
+            updates["scope"] = scope
+
+        response = await self.client.request(
+            "PUT",
+            f"/v1/sessions/{session_id}?wallet={wallet_address}",
+            updates,
+            skip_auth=True,
+        )
+
+        if not response.success or not response.data:
+            raise Exception(
+                response.error.get("message", "Failed to update session")
+                if response.error
+                else "Failed to update session"
+            )
+
+        return self._parse_session(response.data.get("session", response.data))
+
+    async def create_and_activate(self, options: CreateSessionOptions) -> WalletSession:
+        """
+        Create a session and set it as the current session.
+
+        Args:
+            options: Session creation options
+
+        Returns:
+            Created and activated wallet session
+        """
+        session = await self.create(options)
+        return session
 
     def _parse_session(self, data: dict) -> WalletSession:
         """Parse session data into WalletSession object"""

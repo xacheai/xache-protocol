@@ -13,7 +13,7 @@ from typing import Dict
 
 import base58
 from eth_account import Account
-from eth_keys import keys as eth_keys
+from eth_keys import keys as eth_keys  # type: ignore[attr-defined]
 from eth_hash.auto import keccak
 from solders.keypair import Keypair  # type: ignore
 

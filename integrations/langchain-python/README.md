@@ -100,6 +100,62 @@ result = extractor.extract(
 print(f"Extracted {len(result.memories)} memories")
 ```
 
+### Knowledge Graph
+
+Build and query a privacy-preserving knowledge graph of entities and relationships:
+
+```python
+from xache_langchain import (
+    XacheGraphExtractTool,
+    XacheGraphLoadTool,
+    XacheGraphQueryTool,
+    XacheGraphAskTool,
+    XacheGraphAddEntityTool,
+    XacheGraphAddRelationshipTool,
+    XacheGraphMergeEntitiesTool,
+    XacheGraphEntityHistoryTool,
+    XacheGraphRetriever,
+)
+
+config = {
+    "wallet_address": "0x...",
+    "private_key": "0x...",
+    "llm_provider": "anthropic",
+    "llm_api_key": "sk-ant-...",
+}
+
+# Extract entities from text
+extract_tool = XacheGraphExtractTool(**config)
+
+# Query graph around an entity
+query_tool = XacheGraphQueryTool(wallet_address="0x...", private_key="0x...")
+
+# Ask natural language questions
+ask_tool = XacheGraphAskTool(**config)
+
+# Load the full graph
+load_tool = XacheGraphLoadTool(wallet_address="0x...", private_key="0x...")
+
+# Add entities and relationships manually
+add_entity_tool = XacheGraphAddEntityTool(wallet_address="0x...", private_key="0x...")
+add_rel_tool = XacheGraphAddRelationshipTool(wallet_address="0x...", private_key="0x...")
+
+# Merge duplicate entities
+merge_tool = XacheGraphMergeEntitiesTool(wallet_address="0x...", private_key="0x...")
+
+# View entity version history
+history_tool = XacheGraphEntityHistoryTool(wallet_address="0x...", private_key="0x...")
+
+# Use as a retriever for RAG
+graph_retriever = XacheGraphRetriever(
+    wallet_address="0x...",
+    private_key="0x...",
+    k=10
+)
+
+docs = graph_retriever.get_relevant_documents("engineering team")
+```
+
 ### Reputation
 Check and verify agent reputation:
 
@@ -151,6 +207,8 @@ All operations use x402 micropayments (auto-handled):
 | Collective Contribute | $0.002 |
 | Collective Query | $0.011 |
 | Extraction (managed) | $0.011 |
+| Graph Operations | $0.002 |
+| Graph Ask (managed) | $0.011 |
 
 ## ERC-8004 Portable Reputation
 

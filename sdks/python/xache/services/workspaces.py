@@ -103,7 +103,7 @@ class WorkspaceService:
             print(f"Created: {workspace.workspace_id}")
             ```
         """
-        body = {"workspaceName": workspace_name}
+        body: Dict[str, Any] = {"workspaceName": workspace_name}
         if description:
             body["description"] = description
         if budget_limit_cents is not None:
@@ -216,7 +216,7 @@ class WorkspaceService:
         """
         from urllib.parse import quote
 
-        body = {}
+        body: Dict[str, Any] = {}
         if workspace_name is not None:
             body["workspaceName"] = workspace_name
         if description is not None:

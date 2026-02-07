@@ -3,13 +3,51 @@ Xache Protocol Python SDK
 Main client class
 """
 
-import json
-from typing import Dict, Optional, Any, Literal
+from __future__ import annotations
 
-from .types import XacheClientConfig, APIResponse
-from .utils.http import HttpClient
-from .crypto.signing import generate_auth_headers, validate_did, derive_evm_address, derive_solana_address
+import json
+from typing import TYPE_CHECKING, Any, Dict, List, Literal, Optional
+
+from .crypto.signing import (
+    derive_evm_address,
+    derive_solana_address,
+    generate_auth_headers,
+    validate_did,
+)
+from .crypto.subject import (
+    SubjectContext,
+    SubjectDerivationOptions,
+    SubjectId,
+    batch_derive_subject_ids,
+    create_global_context,
+    create_segment_context,
+    create_subject_context,
+    derive_subject_id,
+)
 from .errors import PaymentRequiredError
+from .types import APIResponse
+from .utils.http import HttpClient
+
+if TYPE_CHECKING:
+    from types import TracebackType
+
+    from .payment.handler import PaymentHandler
+    from .services.auto_contribute import AutoContributeService
+    from .services.budget import BudgetService
+    from .services.collective import CollectiveService
+    from .services.extraction import ExtractionService
+    from .services.facilitator import FacilitatorService
+    from .services.graph import GraphService
+    from .services.identity import IdentityService
+    from .services.memory import MemoryService
+    from .services.memory_helpers import MemoryHelpers
+    from .services.owner import OwnerService
+    from .services.receipts import ReceiptsService
+    from .services.reputation import ReputationService
+    from .services.royalty import RoyaltyService
+    from .services.sessions import SessionService
+    from .services.wallet import WalletService
+    from .services.workspaces import WorkspaceService
 
 
 class XacheClient:
@@ -41,18 +79,7 @@ class XacheClient:
         payment_provider: Optional[Dict[str, Any]] = None,
         timeout: int = 30,
         debug: bool = False,
-    ):
-        """
-        Initialize Xache client
-
-        Args:
-            api_url: API Gateway URL
-            did: Agent DID
-            private_key: Private key for signing (hex string)
-            payment_provider: Payment provider configuration
-            timeout: Request timeout in seconds
-            debug: Enable debug logging
-        """
+    ) -> None:
         # Validate configuration
         self._validate_config(api_url, did, private_key)
 
@@ -68,36 +95,44 @@ class XacheClient:
         self._http_client = HttpClient(timeout=timeout, debug=debug)
 
         # Initialize payment handler (lazy loading)
-        self._payment_handler = None
+        self._payment_handler: Optional[PaymentHandler] = None
 
         # Initialize services (lazy loading)
-        self._identity_service = None
-        self._memory_service = None
-        self._collective_service = None
-        self._budget_service = None
-        self._receipts_service = None
-        self._reputation_service = None
-        self._extraction_service = None
-        self._facilitator_service = None
-        self._session_service = None
-        self._royalty_service = None
-        self._workspace_service = None
-        self._owner_service = None
-        self._wallet_service = None
+        self._identity_service: Optional[IdentityService] = None
+        self._memory_service: Optional[MemoryService] = None
+        self._collective_service: Optional[CollectiveService] = None
+        self._budget_service: Optional[BudgetService] = None
+        self._receipts_service: Optional[ReceiptsService] = None
+        self._reputation_service: Optional[ReputationService] = None
+        self._extraction_service: Optional[ExtractionService] = None
+        self._facilitator_service: Optional[FacilitatorService] = None
+        self._session_service: Optional[SessionService] = None
+        self._royalty_service: Optional[RoyaltyService] = None
+        self._workspace_service: Optional[WorkspaceService] = None
+        self._owner_service: Optional[OwnerService] = None
+        self._wallet_service: Optional[WalletService] = None
+        self._graph_service: Optional[GraphService] = None
+        self._auto_contribute_service: Optional[AutoContributeService] = None
+        self._memory_helpers: Optional[MemoryHelpers] = None
 
         if self.debug:
             print(f"Xache client initialized: api_url={api_url}, did={did}")
 
-    async def __aenter__(self):
+    async def __aenter__(self) -> "XacheClient":
         """Async context manager entry"""
         await self._http_client.__aenter__()
         return self
 
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
+    async def __aexit__(
+        self,
+        exc_type: Optional[type],
+        exc_val: Optional[BaseException],
+        exc_tb: Optional[TracebackType],
+    ) -> None:
         """Async context manager exit"""
         await self._http_client.__aexit__(exc_type, exc_val, exc_tb)
 
-    def _validate_config(self, api_url: str, did: str, private_key: str):
+    def _validate_config(self, api_url: str, did: str, private_key: str) -> None:
         """Validate client configuration"""
         if not api_url:
             raise ValueError("api_url is required")
@@ -158,19 +193,7 @@ class XacheClient:
         idempotency_key: Optional[str] = None,
         skip_auth: bool = False,
     ) -> APIResponse:
-        """
-        Make authenticated API request
-
-        Args:
-            method: HTTP method
-            path: API path
-            body: Request body
-            idempotency_key: Idempotency key for 402 payment
-            skip_auth: Skip authentication headers
-
-        Returns:
-            API response
-        """
+        """Make authenticated API request"""
         url = f"{self.api_url}{path}"
         body_str = json.dumps(body) if body else ""
 
@@ -211,17 +234,7 @@ class XacheClient:
         path: str,
         body: Optional[Dict[str, Any]] = None,
     ) -> APIResponse:
-        """
-        Make authenticated API request with automatic 402 payment handling
-
-        Args:
-            method: HTTP method
-            path: API path
-            body: Request body
-
-        Returns:
-            API response
-        """
+        """Make authenticated API request with automatic 402 payment handling"""
         try:
             # First attempt without idempotency key
             return await self.request(method, path, body)
@@ -247,7 +260,7 @@ class XacheClient:
                 method, path, body, idempotency_key=e.challenge_id
             )
 
-    async def _get_payment_handler(self):
+    async def _get_payment_handler(self) -> "PaymentHandler":
         """Get or create payment handler"""
         if self._payment_handler is None:
             from .payment.handler import PaymentHandler
@@ -256,7 +269,7 @@ class XacheClient:
         return self._payment_handler
 
     @property
-    def identity(self):
+    def identity(self) -> "IdentityService":
         """Get identity service"""
         if self._identity_service is None:
             from .services.identity import IdentityService
@@ -265,7 +278,7 @@ class XacheClient:
         return self._identity_service
 
     @property
-    def memory(self):
+    def memory(self) -> "MemoryService":
         """Get memory service"""
         if self._memory_service is None:
             from .services.memory import MemoryService
@@ -274,7 +287,7 @@ class XacheClient:
         return self._memory_service
 
     @property
-    def collective(self):
+    def collective(self) -> "CollectiveService":
         """Get collective service"""
         if self._collective_service is None:
             from .services.collective import CollectiveService
@@ -283,7 +296,7 @@ class XacheClient:
         return self._collective_service
 
     @property
-    def budget(self):
+    def budget(self) -> "BudgetService":
         """Get budget service"""
         if self._budget_service is None:
             from .services.budget import BudgetService
@@ -292,7 +305,7 @@ class XacheClient:
         return self._budget_service
 
     @property
-    def receipts(self):
+    def receipts(self) -> "ReceiptsService":
         """Get receipts service"""
         if self._receipts_service is None:
             from .services.receipts import ReceiptsService
@@ -301,7 +314,7 @@ class XacheClient:
         return self._receipts_service
 
     @property
-    def reputation(self):
+    def reputation(self) -> "ReputationService":
         """Get reputation service"""
         if self._reputation_service is None:
             from .services.reputation import ReputationService
@@ -310,7 +323,7 @@ class XacheClient:
         return self._reputation_service
 
     @property
-    def extraction(self):
+    def extraction(self) -> "ExtractionService":
         """Get extraction service"""
         if self._extraction_service is None:
             from .services.extraction import ExtractionService
@@ -319,7 +332,7 @@ class XacheClient:
         return self._extraction_service
 
     @property
-    def facilitators(self):
+    def facilitators(self) -> "FacilitatorService":
         """Get facilitator service"""
         if self._facilitator_service is None:
             from .services.facilitator import FacilitatorService
@@ -328,7 +341,7 @@ class XacheClient:
         return self._facilitator_service
 
     @property
-    def sessions(self):
+    def sessions(self) -> "SessionService":
         """Get session service"""
         if self._session_service is None:
             from .services.sessions import SessionService
@@ -337,7 +350,7 @@ class XacheClient:
         return self._session_service
 
     @property
-    def royalty(self):
+    def royalty(self) -> "RoyaltyService":
         """Get royalty service"""
         if self._royalty_service is None:
             from .services.royalty import RoyaltyService
@@ -346,7 +359,7 @@ class XacheClient:
         return self._royalty_service
 
     @property
-    def workspaces(self):
+    def workspaces(self) -> "WorkspaceService":
         """Get workspace service"""
         if self._workspace_service is None:
             from .services.workspaces import WorkspaceService
@@ -355,7 +368,7 @@ class XacheClient:
         return self._workspace_service
 
     @property
-    def owner(self):
+    def owner(self) -> "OwnerService":
         """Get owner service"""
         if self._owner_service is None:
             from .services.owner import OwnerService
@@ -364,7 +377,7 @@ class XacheClient:
         return self._owner_service
 
     @property
-    def wallet(self):
+    def wallet(self) -> "WalletService":
         """Get wallet service"""
         if self._wallet_service is None:
             from .services.wallet import WalletService
@@ -372,6 +385,98 @@ class XacheClient:
             self._wallet_service = WalletService(self)
         return self._wallet_service
 
-    async def close(self):
+    @property
+    def graph(self) -> "GraphService":
+        """Get graph service (knowledge graph)"""
+        if self._graph_service is None:
+            from .services.graph import GraphService
+
+            self._graph_service = GraphService(self)
+        return self._graph_service
+
+    @property
+    def auto_contribute(self) -> "AutoContributeService":
+        """Get auto-contribute service"""
+        if self._auto_contribute_service is None:
+            from .services.auto_contribute import AutoContributeService
+
+            self._auto_contribute_service = AutoContributeService(self)
+        return self._auto_contribute_service
+
+    @property
+    def helpers(self) -> "MemoryHelpers":
+        """Get memory helpers (convenience methods)"""
+        if self._memory_helpers is None:
+            from .services.memory_helpers import MemoryHelpers
+
+            self._memory_helpers = MemoryHelpers(self)
+        return self._memory_helpers
+
+    # ============================================================
+    # Subject Keys Methods
+    # ============================================================
+
+    async def derive_subject_id(
+        self,
+        raw_subject_id: str,
+        options: Optional[SubjectDerivationOptions] = None,
+    ) -> SubjectId:
+        """
+        Derive a pseudonymous subject ID for multi-tenant memory isolation.
+
+        Uses HMAC-SHA256 to create an irreversible, deterministic identifier.
+
+        Args:
+            raw_subject_id: Raw subject identifier (customer ID, user email, etc.)
+            options: Optional derivation configuration
+
+        Returns:
+            64-character hex string (pseudonymous subject ID)
+        """
+        enc_key = await self.memory.get_current_encryption_key()
+        return derive_subject_id(enc_key, raw_subject_id, options)
+
+    async def batch_derive_subject_ids(
+        self,
+        raw_subject_ids: List[str],
+        options: Optional[SubjectDerivationOptions] = None,
+    ) -> Dict[str, SubjectId]:
+        """
+        Batch derive subject IDs for multiple raw identifiers.
+
+        Args:
+            raw_subject_ids: Array of raw subject identifiers
+            options: Optional derivation configuration
+
+        Returns:
+            Dict mapping raw ID to derived subject ID
+        """
+        enc_key = await self.memory.get_current_encryption_key()
+        return batch_derive_subject_ids(enc_key, raw_subject_ids, options)
+
+    @staticmethod
+    def create_subject_context(
+        subject_id: str,
+        tenant_id: Optional[str] = None,
+    ) -> SubjectContext:
+        """Create a SUBJECT-scoped context."""
+        return create_subject_context(subject_id, tenant_id)
+
+    @staticmethod
+    def create_segment_context(
+        segment_id: str,
+        tenant_id: Optional[str] = None,
+    ) -> SubjectContext:
+        """Create a SEGMENT-scoped context."""
+        return create_segment_context(segment_id, tenant_id)
+
+    @staticmethod
+    def create_global_context(
+        tenant_id: Optional[str] = None,
+    ) -> SubjectContext:
+        """Create a GLOBAL-scoped context."""
+        return create_global_context(tenant_id)
+
+    async def close(self) -> None:
         """Close HTTP client"""
         await self._http_client.close()

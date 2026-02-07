@@ -99,7 +99,17 @@ class ReceiptsService:
         result = await self.list(limit=100)
         return [r for r in result["receipts"] if r.operation == operation][:limit]
 
-    def _validate_list_options(self, limit: int, offset: int):
+    async def get_total_spending(self) -> float:
+        """
+        Get total spending across all receipts.
+
+        Returns:
+            Total USD spent as float
+        """
+        result = await self.list(limit=100)
+        return sum(float(r.amount_usd) for r in result["receipts"])
+
+    def _validate_list_options(self, limit: int, offset: int) -> None:
         """Validate list options"""
         if limit < 1 or limit > 100:
             raise ValueError("limit must be between 1 and 100")

@@ -57,3 +57,23 @@ export {
   XacheReputationChecker,
 } from './reputation';
 export type { ReputationToolConfig, ReputationResult } from './reputation';
+
+// Knowledge Graph
+export {
+  createGraphExtractTool,
+  createGraphLoadTool,
+  createGraphQueryTool,
+  createGraphAskTool,
+  createGraphAddEntityTool,
+  createGraphAddRelationshipTool,
+  createGraphMergeEntitiesTool,
+  createGraphEntityHistoryTool,
+  XacheGraphExtractTool,
+  XacheGraphLoadTool,
+  XacheGraphQueryTool,
+  XacheGraphAskTool,
+  XacheGraphMergeEntitiesTool,
+  XacheGraphEntityHistoryTool,
+  XacheGraphRetriever,
+} from './graph';
+export type { GraphToolConfig, XacheGraphRetrieverConfig } from './graph';

@@ -95,9 +95,17 @@ const batchResult = await client.memory.storeBatch({
 console.log('Success:', batchResult.successCount);
 console.log('Failed:', batchResult.failureCount);
 
-// Retrieve multiple memories
+// Retrieve multiple memories (single payment, batch pricing)
 const retrieveResult = await client.memory.retrieveBatch({
   storageKeys: ['mem_123', 'mem_456', 'mem_789'],
+});
+
+console.log('Success:', retrieveResult.successCount);
+console.log('Failed:', retrieveResult.failureCount);
+
+// Access individual results (automatically decrypted)
+retrieveResult.results.forEach(result => {
+  console.log(`${result.storageKey}:`, result.data);
 });
 ```
 

@@ -38,6 +38,7 @@ import { RoyaltyService } from './services/RoyaltyService';
 import { WorkspaceService } from './services/WorkspaceService';
 import { OwnerService } from './services/OwnerService';
 import { WalletService } from './services/WalletService';
+import { GraphService } from './services/GraphService';
 import { PaymentHandler } from './payment/PaymentHandler';
 
 /**
@@ -92,6 +93,7 @@ export class XacheClient {
   public readonly workspaces: WorkspaceService;
   public readonly owner: OwnerService;
   public readonly wallet: WalletService;
+  public readonly graph: GraphService;
 
   constructor(config: XacheClientConfig) {
     // Validate configuration
@@ -134,6 +136,7 @@ export class XacheClient {
     this.workspaces = new WorkspaceService(this);
     this.owner = new OwnerService(this);
     this.wallet = new WalletService(this);
+    this.graph = new GraphService(this);
 
     if (this.config.debug) {
       console.log('Xache client initialized:', {

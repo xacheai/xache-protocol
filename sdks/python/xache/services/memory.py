@@ -18,13 +18,15 @@ from ..types import (
     BatchRetrieveMemoryRequest,
     BatchRetrieveMemoryResponse,
     BatchRetrieveMemoryResult,
+    MemoryListItem,
+    ListMemoriesResponse,
 )
 
 
 class MemoryService:
     """Memory service for encrypted data storage"""
 
-    def __init__(self, client):
+    def __init__(self, client: Any) -> None:
         self.client = client
         self._encryption_key: Optional[bytes] = None
 
@@ -34,6 +36,12 @@ class MemoryService:
         storage_tier: str,
         metadata: Optional[Dict[str, Any]] = None,
         anchoring: Optional[str] = None,
+        context: Optional[str] = None,
+        tags: Optional[List[str]] = None,
+        subject_id: Optional[str] = None,
+        scope: Optional[str] = None,
+        segment_id: Optional[str] = None,
+        tenant_id: Optional[str] = None,
     ) -> StoreMemoryResponse:
         """
         Store encrypted memory per LLD §2.4
@@ -64,6 +72,23 @@ class MemoryService:
             "storageTier": storage_tier,
             "metadata": metadata,
         }
+
+        # Add context and tags
+        if context:
+            request_body["context"] = context
+        if tags:
+            request_body["tags"] = tags
+
+        # Add Subject Keys fields
+        if subject_id:
+            request_body["subjectId"] = subject_id
+        if scope:
+            request_body["scope"] = scope
+        if segment_id:
+            request_body["segmentId"] = segment_id
+        if tenant_id:
+            request_body["tenantId"] = tenant_id
+
         if anchoring == "immediate":
             request_body["anchoring"] = "immediate"
 
@@ -143,7 +168,89 @@ class MemoryService:
         if not response.success or not response.data:
             raise Exception("Memory delete failed")
 
-        return response.data
+        result: Dict[str, Any] = response.data
+        return result
+
+    async def list(
+        self,
+        context: Optional[str] = None,
+        tier: Optional[str] = None,
+        limit: int = 50,
+        offset: int = 0,
+        sort_by: str = "created",
+        subject_id: Optional[str] = None,
+        scope: Optional[str] = None,
+        segment_id: Optional[str] = None,
+        tenant_id: Optional[str] = None,
+    ) -> ListMemoriesResponse:
+        """
+        List memories for authenticated agent (free, no payment)
+
+        Args:
+            context: Filter by context string
+            tier: Filter by storage tier
+            limit: Max results (default 50, max 100)
+            offset: Pagination offset
+            sort_by: Sort order ('created', 'accessed', 'size')
+            subject_id: Filter by subject ID
+            scope: Filter by scope ('SUBJECT', 'SEGMENT', 'GLOBAL')
+            segment_id: Filter by segment ID
+            tenant_id: Filter by tenant ID
+
+        Returns:
+            ListMemoriesResponse with memories list and pagination
+        """
+        params = []
+        if context:
+            params.append(f"context={context}")
+        if tier:
+            params.append(f"tier={tier}")
+        if limit != 50:
+            params.append(f"limit={limit}")
+        if offset:
+            params.append(f"offset={offset}")
+        if sort_by != "created":
+            params.append(f"sortBy={sort_by}")
+        if subject_id:
+            params.append(f"subjectId={subject_id}")
+        if scope:
+            params.append(f"scope={scope}")
+        if segment_id:
+            params.append(f"segmentId={segment_id}")
+        if tenant_id:
+            params.append(f"tenantId={tenant_id}")
+
+        query = "&".join(params)
+        url = f"/v1/memory{'?' + query if query else ''}"
+
+        response = await self.client.request("GET", url)
+
+        if not response.success or not response.data:
+            raise Exception("Memory list failed")
+
+        resp_data = response.data
+        memories = [
+            MemoryListItem(
+                storage_key=m.get("storageKey", ""),
+                agent_did=m.get("agentDID", m.get("agentId", "")),
+                storage_tier=m.get("storageTier", "hot"),
+                size_bytes=m.get("encryptedSize", m.get("sizeBytes", 0)),
+                created_at=m.get("createdAt", ""),
+                accessed_at=m.get("accessedAt", ""),
+                context=m.get("context"),
+                tags=m.get("tags"),
+                metadata=m.get("metadata"),
+                updated_at=m.get("updatedAt"),
+            )
+            for m in resp_data.get("memories", [])
+        ]
+
+        return ListMemoriesResponse(
+            memories=memories,
+            total=resp_data.get("total", len(memories)),
+            limit=resp_data.get("limit", limit),
+            offset=resp_data.get("offset", offset),
+        )
 
     async def store_batch(
         self,
@@ -328,7 +435,7 @@ class MemoryService:
             batch_receipt_id=resp_data["batchReceiptId"],
         )
 
-    def _validate_store_request(self, data: Dict[str, Any], storage_tier: str):
+    def _validate_store_request(self, data: Any, storage_tier: Any) -> None:
         """Validate store request"""
         if not isinstance(data, dict):
             raise ValueError("data must be a dictionary")
@@ -400,9 +507,10 @@ class MemoryService:
 
         # Convert to JSON
         json_str = decrypted_bytes.decode('utf-8')
-        return json.loads(json_str)
+        result: Dict[str, Any] = json.loads(json_str)
+        return result
 
-    def set_encryption_key(self, key: bytes):
+    def set_encryption_key(self, key: bytes) -> None:
         """
         Set custom encryption key
         Useful for testing or using external key management

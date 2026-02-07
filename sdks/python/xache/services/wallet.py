@@ -1,7 +1,7 @@
 """Wallet Service - Balance queries and Coinbase Onramp integration for agent funding"""
 
 from dataclasses import dataclass
-from typing import Optional, Literal, List
+from typing import Any, Optional, Literal, List, cast
 from urllib.parse import urlencode
 import json
 
@@ -99,9 +99,13 @@ class WalletService:
         self._validate_network_for_chain(target_network, chain_type)
 
         if target_network in ("solana", "solana-devnet"):
-            return await self._get_solana_balance(address, target_network)
+            return await self._get_solana_balance(
+                address, cast(Literal["solana", "solana-devnet"], target_network)
+            )
         else:
-            return await self._get_evm_balance(address, target_network)
+            return await self._get_evm_balance(
+                address, cast(Literal["base", "base-sepolia"], target_network)
+            )
 
     async def get_onramp_url(
         self,
@@ -205,18 +209,22 @@ class WalletService:
         """
         _, chain_type = self._parse_address(self.client.did)
 
-        results = []
+        results: List[WalletBalance] = []
         if chain_type == "sol":
-            for network in ("solana", "solana-devnet"):
+            for net in cast(
+                List[WalletNetwork], ["solana", "solana-devnet"]
+            ):
                 try:
-                    balance = await self.get_balance(network)
+                    balance = await self.get_balance(net)
                     results.append(balance)
                 except Exception:
                     pass
         else:
-            for network in ("base", "base-sepolia"):
+            for net in cast(
+                List[WalletNetwork], ["base", "base-sepolia"]
+            ):
                 try:
-                    balance = await self.get_balance(network)
+                    balance = await self.get_balance(net)
                     results.append(balance)
                 except Exception:
                     pass
@@ -245,7 +253,7 @@ class WalletService:
         # Default to testnet for safety
         return "solana-devnet" if chain_type == "sol" else "base-sepolia"
 
-    def _validate_network_for_chain(self, network: WalletNetwork, chain_type: str):
+    def _validate_network_for_chain(self, network: WalletNetwork, chain_type: str) -> None:
         """Validate network is compatible with chain type"""
         is_solana_network = network in ("solana", "solana-devnet")
         is_evm_network = network in ("base", "base-sepolia")

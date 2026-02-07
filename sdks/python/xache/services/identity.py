@@ -93,6 +93,81 @@ class IdentityService:
             created_at=data["createdAt"],
         )
 
+    async def get(self, did: str) -> Dict[str, Any]:
+        """
+        Get identity by DID.
+
+        Args:
+            did: DID to look up
+
+        Returns:
+            Identity data dict
+        """
+        if not did:
+            raise ValueError("DID is required")
+
+        response = await self.client.request("GET", f"/v1/identity/{did}")
+
+        if not response.success or not response.data:
+            raise Exception("Failed to get identity")
+
+        return response.data
+
+    async def update(
+        self,
+        did: str,
+        name: Optional[str] = None,
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        """
+        Update identity details.
+
+        Args:
+            did: DID to update
+            name: New display name
+            metadata: New metadata
+
+        Returns:
+            Updated identity data dict
+        """
+        if not did:
+            raise ValueError("DID is required")
+        if not name and not metadata:
+            raise ValueError("At least one of name or metadata must be provided")
+
+        body: Dict[str, Any] = {}
+        if name:
+            body["name"] = name
+        if metadata:
+            body["metadata"] = metadata
+
+        response = await self.client.request("PUT", f"/v1/identity/{did}", body)
+
+        if not response.success or not response.data:
+            raise Exception("Failed to update identity")
+
+        return response.data
+
+    async def delete(self, did: str) -> Dict[str, Any]:
+        """
+        Delete an identity.
+
+        Args:
+            did: DID to delete
+
+        Returns:
+            Deletion confirmation dict
+        """
+        if not did:
+            raise ValueError("DID is required")
+
+        response = await self.client.request("DELETE", f"/v1/identity/{did}")
+
+        if not response.success or not response.data:
+            raise Exception("Failed to delete identity")
+
+        return response.data
+
     async def submit_claim_request(
         self,
         agent_did: str,
@@ -395,7 +470,7 @@ class IdentityService:
 
     def _validate_register_request(
         self, wallet_address: str, key_type: str, chain: str
-    ):
+    ) -> None:
         """Validate registration request"""
         if not wallet_address:
             raise ValueError("wallet_address is required")

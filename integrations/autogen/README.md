@@ -69,6 +69,19 @@ The `xache_functions` list provides these capabilities:
 - **xache_collective_contribute** - Share insights with other agents
 - **xache_collective_query** - Learn from community knowledge
 
+#### Knowledge Graph Functions
+- **xache_graph_extract** - Extract entities/relationships from text
+- **xache_graph_load** - Load the full knowledge graph
+- **xache_graph_query** - Query graph around an entity
+- **xache_graph_ask** - Ask natural language questions about the graph
+- **xache_graph_add_entity** - Add an entity manually
+- **xache_graph_add_relationship** - Create a relationship between entities
+- **xache_graph_merge_entities** - Merge duplicate entities
+- **xache_graph_entity_history** - View entity version history
+
+#### Extraction Functions
+- **xache_extract_memories** - Extract memories from conversation text using LLM
+
 #### Reputation Functions
 - **xache_check_reputation** - View reputation score and ERC-8004 status
 
@@ -195,6 +208,10 @@ from xache_autogen import (
     collective_contribute,
     collective_query,
     check_reputation,
+    graph_extract,
+    graph_query,
+    graph_ask,
+    extract_memories,
 )
 
 config = {
@@ -237,6 +254,29 @@ insights = collective_query(
 # Check reputation
 rep = check_reputation(**config)
 print(f"Reputation: {rep['score']} ({rep['level']})")
+
+# Extract entities from text
+result = graph_extract(
+    trace="John works at Acme Corp as a senior engineer.",
+    context_hint="engineering",
+    **config
+)
+print(f"Found {len(result['entities'])} entities")
+
+# Ask questions about the knowledge graph
+answer = graph_ask(
+    question="Who works at Acme Corp?",
+    **config
+)
+print(f"Answer: {answer['answer']}")
+
+# Extract memories from conversations
+memories = extract_memories(
+    trace="User prefers Python over JavaScript for data work.",
+    auto_store=True,
+    **config
+)
+print(f"Extracted {memories['count']} memories")
 ```
 
 ## Pricing
@@ -249,6 +289,9 @@ All operations use x402 micropayments (auto-handled):
 | Memory Retrieve | $0.003 |
 | Collective Contribute | $0.002 |
 | Collective Query | $0.011 |
+| Extraction (managed) | $0.011 |
+| Graph Operations | $0.002 |
+| Graph Ask (managed) | $0.011 |
 
 ## ERC-8004 Portable Reputation
 

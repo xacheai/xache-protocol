@@ -4,7 +4,7 @@ Provide memory, collective intelligence, and reputation capabilities to agents
 """
 
 import os
-from typing import List, Optional, Type
+from typing import Any, Dict, List, Optional, Type
 from crewai.tools import BaseTool
 from pydantic import BaseModel, Field
 
@@ -363,6 +363,491 @@ class XacheReputationTool(BaseTool):
         return "New"
 
 
+# =============================================================================
+# Knowledge Graph Tools
+# =============================================================================
+
+
+class GraphExtractInput(BaseModel):
+    """Input for graph extract tool"""
+    trace: str = Field(description="Text/trace to extract entities from")
+    context_hint: str = Field(default="", description="Domain hint for extraction")
+
+
+class GraphQueryInput(BaseModel):
+    """Input for graph query tool"""
+    start_entity: str = Field(description="Name of entity to start from")
+    depth: int = Field(default=2, description="Number of hops (default: 2)")
+
+
+class GraphAskInput(BaseModel):
+    """Input for graph ask tool"""
+    question: str = Field(description="Natural language question about the knowledge graph")
+
+
+class GraphAddEntityInput(BaseModel):
+    """Input for graph add entity tool"""
+    name: str = Field(description="Entity name")
+    type: str = Field(description="Entity type (person, organization, tool, concept, etc.)")
+    summary: str = Field(default="", description="Brief description")
+
+
+class GraphAddRelationshipInput(BaseModel):
+    """Input for graph add relationship tool"""
+    from_entity: str = Field(description="Source entity name")
+    to_entity: str = Field(description="Target entity name")
+    type: str = Field(description="Relationship type (works_at, knows, uses, manages, etc.)")
+    description: str = Field(default="", description="Relationship description")
+
+
+class GraphLoadInput(BaseModel):
+    """Input for graph load tool"""
+    entity_types: Optional[List[str]] = Field(default=None, description="Filter to specific entity types")
+    valid_at: Optional[str] = Field(default=None, description="Load graph as it existed at this time (ISO8601)")
+
+
+class GraphMergeEntitiesInput(BaseModel):
+    """Input for graph merge entities tool"""
+    source_name: str = Field(description="Entity to merge FROM (will be superseded)")
+    target_name: str = Field(description="Entity to merge INTO (will be updated)")
+
+
+class GraphEntityHistoryInput(BaseModel):
+    """Input for graph entity history tool"""
+    name: str = Field(description="Entity name to look up history for")
+
+
+class ExtractionInput(BaseModel):
+    """Input for extraction tool"""
+    trace: str = Field(description="Text/conversation to extract memories from")
+    auto_store: bool = Field(default=False, description="Automatically store extracted memories")
+    context_hint: str = Field(default="", description="Domain hint for extraction")
+
+
+class XacheGraphExtractTool(BaseTool):
+    """Extract entities/relationships from text into the knowledge graph."""
+    name: str = "xache_graph_extract"
+    description: str = (
+        "Extract entities and relationships from text into the knowledge graph. "
+        "Identifies people, organizations, tools, concepts and their connections."
+    )
+    args_schema: Type[BaseModel] = GraphExtractInput
+
+    wallet_address: str
+    private_key: str
+    api_url: Optional[str] = None
+    chain: str = "base"
+    timeout: int = 30000
+    debug: bool = False
+    llm_provider: str = "anthropic"
+    llm_api_key: str = ""
+    llm_model: str = ""
+
+    _client: Optional[XacheClient] = None
+
+    def __init__(self, **kwargs: Any) -> None:
+        if 'api_url' not in kwargs or kwargs['api_url'] is None:
+            kwargs['api_url'] = os.environ.get("XACHE_API_URL", "https://api.xache.xyz")
+        super().__init__(**kwargs)
+        chain_prefix = "sol" if self.chain == "solana" else "evm"
+        did = f"did:agent:{chain_prefix}:{self.wallet_address.lower()}"
+        self._client = XacheClient(
+            api_url=self.api_url, did=did, private_key=self.private_key,
+            timeout=self.timeout, debug=self.debug,
+        )
+
+    def _build_llm_config(self) -> Dict[str, Any]:
+        if self.llm_api_key and self.llm_provider:
+            return {"type": "api-key", "provider": self.llm_provider, "apiKey": self.llm_api_key, "model": self.llm_model or None}
+        return {"type": "xache-managed", "provider": "anthropic", "model": self.llm_model or None}
+
+    def _run(self, trace: str, context_hint: str = "") -> str:
+        async def _extract() -> Any:
+            async with self._client as client:
+                return await client.graph.extract(
+                    trace=trace, llm_config=self._build_llm_config(),
+                    subject={"scope": "GLOBAL"},
+                    options={"contextHint": context_hint, "confidenceThreshold": 0.7},
+                )
+        result = run_sync(_extract())
+        entities = result.get("entities", [])
+        rels = result.get("relationships", [])
+        if not entities and not rels:
+            return "No entities or relationships extracted."
+        output = f"Extracted {len(entities)} entities, {len(rels)} relationships.\n"
+        for e in entities:
+            output += f"  {e['name']} [{e['type']}]{'(new)' if e.get('isNew') else ''}\n"
+        for r in rels:
+            output += f"  {r['from']} → {r['type']} → {r['to']}\n"
+        return output
+
+
+class XacheGraphQueryTool(BaseTool):
+    """Query the knowledge graph around a specific entity."""
+    name: str = "xache_graph_query"
+    description: str = (
+        "Query the knowledge graph around a specific entity. "
+        "Returns connected entities and relationships."
+    )
+    args_schema: Type[BaseModel] = GraphQueryInput
+
+    wallet_address: str
+    private_key: str
+    api_url: Optional[str] = None
+    chain: str = "base"
+    timeout: int = 30000
+    debug: bool = False
+
+    _client: Optional[XacheClient] = None
+
+    def __init__(self, **kwargs: Any) -> None:
+        if 'api_url' not in kwargs or kwargs['api_url'] is None:
+            kwargs['api_url'] = os.environ.get("XACHE_API_URL", "https://api.xache.xyz")
+        super().__init__(**kwargs)
+        chain_prefix = "sol" if self.chain == "solana" else "evm"
+        did = f"did:agent:{chain_prefix}:{self.wallet_address.lower()}"
+        self._client = XacheClient(
+            api_url=self.api_url, did=did, private_key=self.private_key,
+            timeout=self.timeout, debug=self.debug,
+        )
+
+    def _run(self, start_entity: str, depth: int = 2) -> str:
+        async def _query() -> Any:
+            async with self._client as client:
+                graph = await client.graph.query(
+                    subject={"scope": "GLOBAL"}, start_entity=start_entity, depth=depth,
+                )
+                return graph.to_json()
+        data = run_sync(_query())
+        entities = data.get("entities", [])
+        if not entities:
+            return f'No entities found connected to "{start_entity}".'
+        output = f"Subgraph: {len(entities)} entities, {len(data.get('relationships', []))} relationships\n"
+        for e in entities:
+            output += f"  {e['name']} [{e['type']}]"
+            if e.get("summary"):
+                output += f" — {e['summary'][:80]}"
+            output += "\n"
+        return output
+
+
+class XacheGraphAskTool(BaseTool):
+    """Ask a natural language question about the knowledge graph."""
+    name: str = "xache_graph_ask"
+    description: str = (
+        "Ask a natural language question about the knowledge graph. "
+        "Uses LLM to analyze entities/relationships and provide an answer."
+    )
+    args_schema: Type[BaseModel] = GraphAskInput
+
+    wallet_address: str
+    private_key: str
+    api_url: Optional[str] = None
+    chain: str = "base"
+    timeout: int = 30000
+    debug: bool = False
+    llm_provider: str = "anthropic"
+    llm_api_key: str = ""
+    llm_model: str = ""
+
+    _client: Optional[XacheClient] = None
+
+    def __init__(self, **kwargs: Any) -> None:
+        if 'api_url' not in kwargs or kwargs['api_url'] is None:
+            kwargs['api_url'] = os.environ.get("XACHE_API_URL", "https://api.xache.xyz")
+        super().__init__(**kwargs)
+        chain_prefix = "sol" if self.chain == "solana" else "evm"
+        did = f"did:agent:{chain_prefix}:{self.wallet_address.lower()}"
+        self._client = XacheClient(
+            api_url=self.api_url, did=did, private_key=self.private_key,
+            timeout=self.timeout, debug=self.debug,
+        )
+
+    def _build_llm_config(self) -> Dict[str, Any]:
+        if self.llm_api_key and self.llm_provider:
+            return {"type": "api-key", "provider": self.llm_provider, "apiKey": self.llm_api_key, "model": self.llm_model or None}
+        return {"type": "xache-managed", "provider": "anthropic", "model": self.llm_model or None}
+
+    def _run(self, question: str) -> str:
+        async def _ask() -> Any:
+            async with self._client as client:
+                return await client.graph.ask(
+                    subject={"scope": "GLOBAL"}, question=question,
+                    llm_config=self._build_llm_config(),
+                )
+        answer = run_sync(_ask())
+        output = f"Answer: {answer['answer']}\nConfidence: {int(answer['confidence'] * 100)}%"
+        sources = answer.get("sources", [])
+        if sources:
+            output += "\nSources: " + ", ".join(f"{s['name']} [{s['type']}]" for s in sources)
+        return output
+
+
+class XacheGraphAddEntityTool(BaseTool):
+    """Add an entity to the knowledge graph."""
+    name: str = "xache_graph_add_entity"
+    description: str = "Add an entity to the knowledge graph (person, organization, tool, concept, etc.)."
+    args_schema: Type[BaseModel] = GraphAddEntityInput
+
+    wallet_address: str
+    private_key: str
+    api_url: Optional[str] = None
+    chain: str = "base"
+    timeout: int = 30000
+    debug: bool = False
+
+    _client: Optional[XacheClient] = None
+
+    def __init__(self, **kwargs: Any) -> None:
+        if 'api_url' not in kwargs or kwargs['api_url'] is None:
+            kwargs['api_url'] = os.environ.get("XACHE_API_URL", "https://api.xache.xyz")
+        super().__init__(**kwargs)
+        chain_prefix = "sol" if self.chain == "solana" else "evm"
+        did = f"did:agent:{chain_prefix}:{self.wallet_address.lower()}"
+        self._client = XacheClient(
+            api_url=self.api_url, did=did, private_key=self.private_key,
+            timeout=self.timeout, debug=self.debug,
+        )
+
+    def _run(self, name: str, type: str, summary: str = "") -> str:
+        async def _add() -> Any:
+            async with self._client as client:
+                return await client.graph.add_entity(
+                    subject={"scope": "GLOBAL"}, name=name, type=type, summary=summary,
+                )
+        entity = run_sync(_add())
+        return f'Created entity "{entity["name"]}" [{entity["type"]}], key: {entity["key"]}'
+
+
+class XacheGraphAddRelationshipTool(BaseTool):
+    """Create a relationship between two entities in the knowledge graph."""
+    name: str = "xache_graph_add_relationship"
+    description: str = "Create a relationship between two entities in the knowledge graph."
+    args_schema: Type[BaseModel] = GraphAddRelationshipInput
+
+    wallet_address: str
+    private_key: str
+    api_url: Optional[str] = None
+    chain: str = "base"
+    timeout: int = 30000
+    debug: bool = False
+
+    _client: Optional[XacheClient] = None
+
+    def __init__(self, **kwargs: Any) -> None:
+        if 'api_url' not in kwargs or kwargs['api_url'] is None:
+            kwargs['api_url'] = os.environ.get("XACHE_API_URL", "https://api.xache.xyz")
+        super().__init__(**kwargs)
+        chain_prefix = "sol" if self.chain == "solana" else "evm"
+        did = f"did:agent:{chain_prefix}:{self.wallet_address.lower()}"
+        self._client = XacheClient(
+            api_url=self.api_url, did=did, private_key=self.private_key,
+            timeout=self.timeout, debug=self.debug,
+        )
+
+    def _run(self, from_entity: str, to_entity: str, type: str, description: str = "") -> str:
+        async def _add() -> Any:
+            async with self._client as client:
+                return await client.graph.add_relationship(
+                    subject={"scope": "GLOBAL"}, from_entity=from_entity,
+                    to_entity=to_entity, type=type, description=description,
+                )
+        rel = run_sync(_add())
+        return f"Created relationship: {from_entity} → {rel['type']} → {to_entity}"
+
+
+class XacheGraphLoadTool(BaseTool):
+    """Load the full knowledge graph."""
+    name: str = "xache_graph_load"
+    description: str = (
+        "Load the full knowledge graph. Returns all entities and relationships. "
+        "Optionally filter by entity type or load a historical snapshot."
+    )
+    args_schema: Type[BaseModel] = GraphLoadInput
+
+    wallet_address: str
+    private_key: str
+    api_url: Optional[str] = None
+    chain: str = "base"
+    timeout: int = 30000
+    debug: bool = False
+
+    _client: Optional[XacheClient] = None
+
+    def __init__(self, **kwargs: Any) -> None:
+        if 'api_url' not in kwargs or kwargs['api_url'] is None:
+            kwargs['api_url'] = os.environ.get("XACHE_API_URL", "https://api.xache.xyz")
+        super().__init__(**kwargs)
+        chain_prefix = "sol" if self.chain == "solana" else "evm"
+        did = f"did:agent:{chain_prefix}:{self.wallet_address.lower()}"
+        self._client = XacheClient(
+            api_url=self.api_url, did=did, private_key=self.private_key,
+            timeout=self.timeout, debug=self.debug,
+        )
+
+    def _run(self, entity_types: Optional[List[str]] = None, valid_at: Optional[str] = None) -> str:
+        async def _load() -> Any:
+            async with self._client as client:
+                graph = await client.graph.load(
+                    subject={"scope": "GLOBAL"}, entity_types=entity_types, valid_at=valid_at,
+                )
+                return graph.to_json()
+        data = run_sync(_load())
+        entities = data.get("entities", [])
+        if not entities:
+            return "Knowledge graph is empty."
+        output = f"Knowledge graph: {len(entities)} entities, {len(data.get('relationships', []))} relationships\n"
+        for e in entities:
+            output += f"  {e['name']} [{e['type']}]"
+            if e.get("summary"):
+                output += f" — {e['summary'][:80]}"
+            output += "\n"
+        return output
+
+
+class XacheGraphMergeEntitiesTool(BaseTool):
+    """Merge two entities into one in the knowledge graph."""
+    name: str = "xache_graph_merge_entities"
+    description: str = (
+        "Merge two entities into one. The source entity is superseded and the target "
+        "entity is updated with merged attributes. Relationships are transferred."
+    )
+    args_schema: Type[BaseModel] = GraphMergeEntitiesInput
+
+    wallet_address: str
+    private_key: str
+    api_url: Optional[str] = None
+    chain: str = "base"
+    timeout: int = 30000
+    debug: bool = False
+
+    _client: Optional[XacheClient] = None
+
+    def __init__(self, **kwargs: Any) -> None:
+        if 'api_url' not in kwargs or kwargs['api_url'] is None:
+            kwargs['api_url'] = os.environ.get("XACHE_API_URL", "https://api.xache.xyz")
+        super().__init__(**kwargs)
+        chain_prefix = "sol" if self.chain == "solana" else "evm"
+        did = f"did:agent:{chain_prefix}:{self.wallet_address.lower()}"
+        self._client = XacheClient(
+            api_url=self.api_url, did=did, private_key=self.private_key,
+            timeout=self.timeout, debug=self.debug,
+        )
+
+    def _run(self, source_name: str, target_name: str) -> str:
+        async def _merge() -> Any:
+            async with self._client as client:
+                return await client.graph.merge_entities(
+                    subject={"scope": "GLOBAL"}, source_name=source_name, target_name=target_name,
+                )
+        merged = run_sync(_merge())
+        return f'Merged "{source_name}" into "{target_name}". Result: {merged["name"]} [{merged["type"]}] (v{merged["version"]})'
+
+
+class XacheGraphEntityHistoryTool(BaseTool):
+    """Get the version history of an entity."""
+    name: str = "xache_graph_entity_history"
+    description: str = (
+        "Get the full version history of an entity. "
+        "Shows how the entity has changed over time."
+    )
+    args_schema: Type[BaseModel] = GraphEntityHistoryInput
+
+    wallet_address: str
+    private_key: str
+    api_url: Optional[str] = None
+    chain: str = "base"
+    timeout: int = 30000
+    debug: bool = False
+
+    _client: Optional[XacheClient] = None
+
+    def __init__(self, **kwargs: Any) -> None:
+        if 'api_url' not in kwargs or kwargs['api_url'] is None:
+            kwargs['api_url'] = os.environ.get("XACHE_API_URL", "https://api.xache.xyz")
+        super().__init__(**kwargs)
+        chain_prefix = "sol" if self.chain == "solana" else "evm"
+        did = f"did:agent:{chain_prefix}:{self.wallet_address.lower()}"
+        self._client = XacheClient(
+            api_url=self.api_url, did=did, private_key=self.private_key,
+            timeout=self.timeout, debug=self.debug,
+        )
+
+    def _run(self, name: str) -> str:
+        async def _history() -> Any:
+            async with self._client as client:
+                return await client.graph.get_entity_history(
+                    subject={"scope": "GLOBAL"}, name=name,
+                )
+        versions = run_sync(_history())
+        if not versions:
+            return f'No history found for entity "{name}".'
+        output = f'History for "{name}": {len(versions)} version(s)\n'
+        for v in versions:
+            output += f"  v{v['version']} — {v['name']} [{v['type']}]"
+            if v.get("summary"):
+                output += f" | {v['summary'][:80]}"
+            output += f"\n    Valid: {v['validFrom']}{' → ' + v['validTo'] if v.get('validTo') else ' → current'}\n"
+        return output
+
+
+class XacheExtractionTool(BaseTool):
+    """Extract memories from conversations using Xache's LLM-powered extraction."""
+    name: str = "xache_extract_memories"
+    description: str = (
+        "Extract valuable memories and learnings from conversation text. "
+        "Uses LLM to identify key information worth remembering."
+    )
+    args_schema: Type[BaseModel] = ExtractionInput
+
+    wallet_address: str
+    private_key: str
+    api_url: Optional[str] = None
+    chain: str = "base"
+    timeout: int = 30000
+    debug: bool = False
+    llm_provider: str = "anthropic"
+    llm_api_key: str = ""
+    llm_model: str = ""
+
+    _client: Optional[XacheClient] = None
+
+    def __init__(self, **kwargs: Any) -> None:
+        if 'api_url' not in kwargs or kwargs['api_url'] is None:
+            kwargs['api_url'] = os.environ.get("XACHE_API_URL", "https://api.xache.xyz")
+        super().__init__(**kwargs)
+        chain_prefix = "sol" if self.chain == "solana" else "evm"
+        did = f"did:agent:{chain_prefix}:{self.wallet_address.lower()}"
+        self._client = XacheClient(
+            api_url=self.api_url, did=did, private_key=self.private_key,
+            timeout=self.timeout, debug=self.debug,
+        )
+
+    def _build_llm_config(self) -> Dict[str, Any]:
+        if self.llm_api_key and self.llm_provider:
+            return {"type": "api-key", "provider": self.llm_provider, "apiKey": self.llm_api_key, "model": self.llm_model or None}
+        return {"type": "xache-managed", "provider": "anthropic", "model": self.llm_model or None}
+
+    def _run(self, trace: str, auto_store: bool = False, context_hint: str = "") -> str:
+        async def _extract() -> Any:
+            async with self._client as client:
+                return await client.extraction.extract(
+                    trace=trace, llm_config=self._build_llm_config(),
+                    options={"autoStore": auto_store, "context": {"hint": context_hint} if context_hint else None},
+                )
+        result = run_sync(_extract())
+        memories = result.get("memories", [])
+        if not memories:
+            return "No memories extracted."
+        output = f"Extracted {len(memories)} memories:\n"
+        for i, m in enumerate(memories, 1):
+            content = m.get("content", "")[:100]
+            output += f"  {i}. {content}\n"
+        if result.get("receiptId"):
+            output += f"Receipt: {result['receiptId']}"
+        return output
+
+
 def xache_tools(
     wallet_address: str,
     private_key: str,
@@ -371,6 +856,11 @@ def xache_tools(
     include_memory: bool = True,
     include_collective: bool = True,
     include_reputation: bool = True,
+    include_graph: bool = True,
+    include_extraction: bool = True,
+    llm_provider: str = "anthropic",
+    llm_api_key: str = "",
+    llm_model: str = "",
     timeout: int = 30000,
     debug: bool = False,
 ) -> List[BaseTool]:
@@ -385,6 +875,11 @@ def xache_tools(
         include_memory: Include memory tools
         include_collective: Include collective intelligence tools
         include_reputation: Include reputation tool
+        include_graph: Include knowledge graph tools
+        include_extraction: Include memory extraction tool
+        llm_provider: LLM provider for graph extract/ask/extraction
+        llm_api_key: LLM API key
+        llm_model: LLM model override
         timeout: Request timeout in milliseconds (default: 30000)
         debug: Enable debug logging
 
@@ -400,20 +895,29 @@ def xache_tools(
             role="Researcher",
             tools=xache_tools(
                 wallet_address="0x...",
-                private_key="0x..."
+                private_key="0x...",
+                llm_provider="anthropic",
+                llm_api_key="sk-ant-...",
             )
         )
         ```
     """
-    tools = []
+    tools: List[BaseTool] = []
 
-    config = {
+    config: Dict[str, Any] = {
         "wallet_address": wallet_address,
         "private_key": private_key,
         "api_url": api_url,
         "chain": chain,
         "timeout": timeout,
         "debug": debug,
+    }
+
+    graph_config: Dict[str, Any] = {
+        **config,
+        "llm_provider": llm_provider,
+        "llm_api_key": llm_api_key,
+        "llm_model": llm_model,
     }
 
     if include_memory:
@@ -430,5 +934,20 @@ def xache_tools(
 
     if include_reputation:
         tools.append(XacheReputationTool(**config))
+
+    if include_graph:
+        tools.extend([
+            XacheGraphExtractTool(**graph_config),
+            XacheGraphLoadTool(**config),
+            XacheGraphQueryTool(**config),
+            XacheGraphAskTool(**graph_config),
+            XacheGraphAddEntityTool(**config),
+            XacheGraphAddRelationshipTool(**config),
+            XacheGraphMergeEntitiesTool(**config),
+            XacheGraphEntityHistoryTool(**config),
+        ])
+
+    if include_extraction:
+        tools.append(XacheExtractionTool(**graph_config))
 
     return tools

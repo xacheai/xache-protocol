@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "crewai-xache"
-version = "0.1.4"
+version = "0.2.0"
 description = "CrewAI integration for Xache Protocol - verifiable AI agent memory"
 readme = "README.md"
 license = {text = "MIT"}

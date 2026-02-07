@@ -5,9 +5,10 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "xache"
 version = "5.5.0"
+
 description = "Official Python SDK for Xache Protocol"
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 license = {text = "MIT"}
 authors = [
     {name = "Xache Protocol", email = "dev@xache.xyz"}
@@ -18,7 +19,6 @@ classifiers = [
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
@@ -61,11 +61,76 @@ asyncio_mode = "auto"
 testpaths = ["tests"]
 
 [tool.mypy]
-python_version = "3.8"
+python_version = "3.9"
+strict = true
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true
+disallow_any_generics = true
+check_untyped_defs = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = false
+show_error_codes = true
+# Allow calls from strict modules into non-strict legacy services
+disallow_untyped_calls = false
+
+# Core modules — strict, zero tolerance
+[[tool.mypy.overrides]]
+module = [
+    "xache.types",
+    "xache.errors",
+    "xache.client",
+    "xache.graph.*",
+    "xache.utils.http",
+    "xache.services.memory",
+    "xache.services.graph",
+]
+disallow_untyped_defs = true
+disallow_any_generics = true
+warn_return_any = true
+
+# Legacy services — relaxed until migrated
+[[tool.mypy.overrides]]
+module = [
+    "xache.services.facilitator",
+    "xache.services.reputation",
+    "xache.services.workspaces",
+    "xache.services.sessions",
+    "xache.services.royalty",
+    "xache.services.receipts",
+    "xache.services.owner",
+    "xache.services.collective",
+    "xache.services.identity",
+    "xache.services.extraction",
+    "xache.services.wallet",
+    "xache.services.budget",
+    "xache.services.auto_contribute",
+    "xache.services.memory_helpers",
+    "xache.payment.*",
+    "xache.crypto.*",
+    "xache.utils.retry",
+    "xache.utils.cache",
+]
+disallow_untyped_defs = false
+disallow_any_generics = false
+warn_return_any = false
+strict = false
+
+# Third-party stubs
+[[tool.mypy.overrides]]
+module = [
+    "aiohttp.*",
+    "nacl.*",
+    "eth_account.*",
+    "eth_keys.*",
+    "solders.*",
+    "mnemonic.*",
+    "bip_utils.*",
+    "base58.*",
+]
+ignore_missing_imports = true
 
 [tool.black]
 line-length = 100
-target-version = ['py38', 'py39', 'py310', 'py311']
+target-version = ['py39', 'py310', 'py311', 'py312']

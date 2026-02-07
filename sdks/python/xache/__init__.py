@@ -25,7 +25,7 @@ Example:
     ```
 """
 
-__version__ = "5.3.0"
+__version__ = "5.5.0"
 
 # Main client
 from .client import XacheClient
@@ -43,6 +43,8 @@ from .types import (
     StoreMemoryResponse,
     RetrieveMemoryRequest,
     RetrieveMemoryResponse,
+    MemoryListItem,
+    ListMemoriesResponse,
     ContributeHeuristicRequest,
     ContributeHeuristicResponse,
     QueryCollectiveRequest,
@@ -84,6 +86,9 @@ from .services import (
     ReceiptsService,
     ExtractionService,
     WalletService,
+    AutoContributeService,
+    AutoContributeConfig,
+    MemoryHelpers,
 )
 
 # Wallet types
@@ -106,6 +111,37 @@ from .services.extraction import (
     ExtractionResult,
     ExtractionOptions,
 )
+
+# Graph types
+from .graph import Entity, Relationship, Graph, GraphAnswer, GraphExtractionResult
+from .services.graph import GraphService
+
+# Subject Keys
+from .crypto.subject import (
+    SubjectId,
+    MemoryScope,
+    SegmentId,
+    TenantId,
+    SubjectContext,
+    SubjectRetrievalContext,
+    SubjectDerivationOptions,
+    derive_subject_id,
+    is_valid_subject_id,
+    is_valid_scope,
+    create_subject_context,
+    create_segment_context,
+    create_global_context,
+    validate_subject_context,
+    derive_entity_key,
+    batch_derive_subject_ids,
+    batch_derive_entity_keys,
+)
+
+# Standard Contexts
+from .constants.standard_contexts import StandardContexts
+
+# Batch Utilities
+from .utils.batch import batch_process, batch_process_with_concurrency, BatchItemResult, BatchResult
 
 # Utilities
 from .utils.retry import RetryPolicy, with_retry
@@ -134,6 +170,8 @@ __all__ = [
     "StoreMemoryResponse",
     "RetrieveMemoryRequest",
     "RetrieveMemoryResponse",
+    "MemoryListItem",
+    "ListMemoriesResponse",
     "ContributeHeuristicRequest",
     "ContributeHeuristicResponse",
     "QueryCollectiveRequest",
@@ -169,6 +207,9 @@ __all__ = [
     "ReceiptsService",
     "ExtractionService",
     "WalletService",
+    "AutoContributeService",
+    "AutoContributeConfig",
+    "MemoryHelpers",
     # Wallet types
     "WalletBalance",
     "FundingStatus",
@@ -184,6 +225,31 @@ __all__ = [
     "ExtractionMetadata",
     "ExtractionResult",
     "ExtractionOptions",
+    # Subject Keys
+    "SubjectId",
+    "MemoryScope",
+    "SegmentId",
+    "TenantId",
+    "SubjectContext",
+    "SubjectRetrievalContext",
+    "SubjectDerivationOptions",
+    "derive_subject_id",
+    "is_valid_subject_id",
+    "is_valid_scope",
+    "create_subject_context",
+    "create_segment_context",
+    "create_global_context",
+    "validate_subject_context",
+    "derive_entity_key",
+    "batch_derive_subject_ids",
+    "batch_derive_entity_keys",
+    # Standard Contexts
+    "StandardContexts",
+    # Batch Utilities
+    "batch_process",
+    "batch_process_with_concurrency",
+    "BatchItemResult",
+    "BatchResult",
     # Utilities
     "RetryPolicy",
     "with_retry",
@@ -193,4 +259,11 @@ __all__ = [
     "WalletGenerator",
     "WalletGenerationResult",
     "WalletGenerationOptions",
+    # Graph
+    "Entity",
+    "Relationship",
+    "Graph",
+    "GraphAnswer",
+    "GraphExtractionResult",
+    "GraphService",
 ]

@@ -32,6 +32,12 @@ export const StandardContexts = {
 
   /** Performance optimization insights */
   OPTIMIZATION_INSIGHT: 'xache.optimization.insight',
+
+  /** Knowledge graph entity */
+  GRAPH_ENTITY: 'xache.graph.entity',
+
+  /** Knowledge graph relationship */
+  GRAPH_RELATIONSHIP: 'xache.graph.relationship',
 } as const;
 
 export type StandardContext = typeof StandardContexts[keyof typeof StandardContexts];

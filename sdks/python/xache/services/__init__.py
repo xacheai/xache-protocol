@@ -13,6 +13,8 @@ from .royalty import RoyaltyService
 from .workspaces import WorkspaceService
 from .owner import OwnerService
 from .wallet import WalletService
+from .auto_contribute import AutoContributeService, AutoContributeConfig
+from .memory_helpers import MemoryHelpers
 
 __all__ = [
     "IdentityService",
@@ -28,4 +30,7 @@ __all__ = [
     "WorkspaceService",
     "OwnerService",
     "WalletService",
+    "AutoContributeService",
+    "AutoContributeConfig",
+    "MemoryHelpers",
 ]

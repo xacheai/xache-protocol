@@ -55,6 +55,7 @@ class PaymentRequiredError(XacheError):
         pay_to: str,
         description: str,
         request_id: Optional[str] = None,
+        resource: Optional[str] = None,
     ):
         details = {
             "challenge_id": challenge_id,
@@ -62,6 +63,7 @@ class PaymentRequiredError(XacheError):
             "chain_hint": chain_hint,
             "pay_to": pay_to,
             "description": description,
+            "resource": resource or "",
         }
         super().__init__("PAYMENT_REQUIRED", message, 402, details, request_id)
         self.challenge_id = challenge_id
@@ -69,6 +71,7 @@ class PaymentRequiredError(XacheError):
         self.chain_hint = chain_hint
         self.pay_to = pay_to
         self.description = description
+        self.resource = resource or ""
 
 
 class RateLimitedError(XacheError):
@@ -178,7 +181,7 @@ def create_error_from_response(
     if error_class:
         if code == "RATE_LIMITED":
             reset_at = details.get("reset_at") if details else None
-            return error_class(message, reset_at, details, request_id)
-        return error_class(message, details, request_id)
+            return RateLimitedError(message, reset_at, details, request_id)
+        return error_class(message, details, request_id)  # type: ignore[no-any-return, call-arg]
 
     return XacheError(code, message, status_code, details, request_id)

@@ -1,6 +1,6 @@
 """Budget Service - Manage monthly spending budgets with alert support per HLD §2.2 Budget Guardian"""
 
-from typing import List, Callable, Union
+from typing import List, Callable, Optional, Union
 from datetime import datetime
 from ..types import BudgetStatus, BudgetAlert, BudgetAlertLevel, BudgetAlertHandler
 
@@ -65,7 +65,7 @@ class BudgetService:
         status = await self.get_status()
         return status.remaining_cents >= operation_cost_cents
 
-    def on_alert(self, handler: BudgetAlertHandler):
+    def on_alert(self, handler: BudgetAlertHandler) -> None:
         """
         Register an alert handler for budget threshold notifications
         Per PRD FR-021: Usage Alerts at 50%, 80%, 100%
@@ -138,7 +138,7 @@ class BudgetService:
 
         return alerts
 
-    async def _check_and_trigger_alerts(self, status: BudgetStatus):
+    async def _check_and_trigger_alerts(self, status: BudgetStatus) -> None:
         """Check thresholds and trigger alert handlers"""
         # Find the highest crossed threshold
         highest_crossed_threshold = 0
@@ -190,7 +190,7 @@ class BudgetService:
             timestamp=datetime.utcnow().isoformat() + "Z",
         )
 
-    def _validate_limit(self, limit_cents: int):
+    def _validate_limit(self, limit_cents: int) -> None:
         """Validate budget limit"""
         if not isinstance(limit_cents, int):
             raise ValueError("limit_cents must be an integer")
@@ -246,7 +246,7 @@ class BudgetService:
             "agents": data.get("agents", []),
         }
 
-    async def update_fleet_cap(self, fleet_cap_cents: int | None) -> dict:
+    async def update_fleet_cap(self, fleet_cap_cents: Optional[int]) -> dict:
         """
         Update fleet budget cap for authenticated owner.
         Set to None for unlimited.

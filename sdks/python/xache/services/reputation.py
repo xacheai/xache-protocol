@@ -1,6 +1,6 @@
 """Reputation Service - Query reputation scores and domain expertise per HLD §2.2"""
 
-from typing import Dict, List, Optional, Literal
+from typing import Any, Dict, List, Optional, Literal
 from ..types import (
     ReputationSnapshot,
     DomainReputation,
@@ -264,14 +264,14 @@ class ReputationService:
             for item in response.data
         ]
 
-    def _validate_limit(self, limit: int):
+    def _validate_limit(self, limit: int) -> None:
         """Validate limit parameter"""
         if not isinstance(limit, int):
             raise ValueError("limit must be an integer")
         if limit < 1 or limit > 100:
             raise ValueError("limit must be between 1 and 100")
 
-    def _validate_domain(self, domain: str):
+    def _validate_domain(self, domain: str) -> None:
         """Validate domain parameter"""
         if not domain or not isinstance(domain, str):
             raise ValueError("domain is required and must be a string")
@@ -295,7 +295,7 @@ class ReputationService:
         expiry_days: int = 365,
         index_limit: int = 100,
         network: ERC8004Network = "base-sepolia",
-    ) -> Dict[str, any]:
+    ) -> Dict[str, Any]:
         """
         Build ERC-8004 authorization for external signing.
 
@@ -453,7 +453,7 @@ class ReputationService:
             message=data.get("message", ""),
         )
 
-    async def disable_erc8004_export(self) -> Dict[str, any]:
+    async def disable_erc8004_export(self) -> Dict[str, Any]:
         """
         Disable ERC-8004 reputation export.
 

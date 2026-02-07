@@ -287,7 +287,7 @@ class FacilitatorService:
                 candidates = within_latency
 
         # Sort by priority (descending) then latency (ascending)
-        def sort_key(f: FacilitatorConfig):
+        def sort_key(f: FacilitatorConfig) -> tuple:
             latency = f.avg_latency_ms if f.avg_latency_ms is not None else float('inf')
             return (-f.priority, latency)
 

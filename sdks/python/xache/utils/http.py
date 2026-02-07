@@ -25,9 +25,9 @@ class RetryConfig:
     initial_delay: float = 1.0
     max_delay: float = 10.0
     backoff_multiplier: float = 2.0
-    retryable_status_codes: list = None
+    retryable_status_codes: Optional[list[int]] = None
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if self.retryable_status_codes is None:
             self.retryable_status_codes = [408, 429, 500, 502, 503, 504]
 
@@ -46,22 +46,22 @@ class HttpClient:
         self.debug = debug
         self._session: Optional[aiohttp.ClientSession] = None
 
-    async def __aenter__(self):
+    async def __aenter__(self) -> "HttpClient":
         """Async context manager entry"""
         await self._ensure_session()
         return self
 
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
+    async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         """Async context manager exit"""
         await self.close()
 
-    async def _ensure_session(self):
+    async def _ensure_session(self) -> None:
         """Ensure aiohttp session exists"""
         if self._session is None or self._session.closed:
             timeout = aiohttp.ClientTimeout(total=self.timeout)
             self._session = aiohttp.ClientSession(timeout=timeout)
 
-    async def close(self):
+    async def close(self) -> None:
         """Close HTTP session"""
         if self._session and not self._session.closed:
             await self._session.close()
@@ -145,6 +145,7 @@ class HttpClient:
         body: Optional[str],
     ) -> APIResponse:
         """Make single HTTP request"""
+        assert self._session is not None, "Session not initialized. Use async with or call _ensure_session()"
         async with self._session.request(
             method,
             url,
@@ -157,8 +158,30 @@ class HttpClient:
             except json.JSONDecodeError as e:
                 raise NetworkError("Failed to parse response JSON", e)
 
-            # Handle 402 Payment Required
+            # Handle 402 Payment Required (x402-compliant + legacy)
             if response.status == 402:
+                x402_version = response_json.get("x402Version")
+                accepts = response_json.get("accepts", [])
+
+                # x402 format (v1 or v2): has x402Version + accepts array
+                if x402_version in (1, 2) and isinstance(accepts, list) and len(accepts) > 0:
+                    requirements = accepts[0]
+                    challenge_id = response.headers.get("X-Challenge-ID", "")
+                    request_id = response.headers.get("X-Request-ID")
+                    fee_payer = (requirements.get("extra") or {}).get("feePayer", "")
+                    encoded_hint = f"{requirements.get('network', '')}:{requirements.get('asset', '')}:{requirements.get('maxAmountRequired', '0')}:{fee_payer}"
+
+                    raise PaymentRequiredError(
+                        response_json.get("error", "Payment required"),
+                        challenge_id,
+                        str(requirements.get("maxAmountRequired", "0")),
+                        encoded_hint,
+                        requirements.get("payTo", ""),
+                        requirements.get("description", "Payment required"),
+                        request_id,
+                    )
+
+                # Fallback to old custom format
                 payment_data = response_json.get("payment", {})
                 meta = response_json.get("meta", {})
                 raise PaymentRequiredError(
@@ -184,7 +207,7 @@ class HttpClient:
                 )
 
             # Check if retryable status code
-            if response.status in self.retry_config.retryable_status_codes:
+            if self.retry_config.retryable_status_codes and response.status in self.retry_config.retryable_status_codes:
                 raise NetworkError(f"HTTP {response.status}: {response.reason}")
 
             # Success response

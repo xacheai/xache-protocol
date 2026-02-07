@@ -37,8 +37,19 @@ from .reputation import (
     XacheReputationChecker,
     ReputationResult,
 )
+from .graph import (
+    XacheGraphExtractTool,
+    XacheGraphLoadTool,
+    XacheGraphQueryTool,
+    XacheGraphAskTool,
+    XacheGraphAddEntityTool,
+    XacheGraphAddRelationshipTool,
+    XacheGraphMergeEntitiesTool,
+    XacheGraphEntityHistoryTool,
+    XacheGraphRetriever,
+)
 
-__version__ = "0.1.0"
+__version__ = "0.4.0"
 __all__ = [
     # Memory
     "XacheMemory",
@@ -56,4 +67,14 @@ __all__ = [
     "XacheReputationTool",
     "XacheReputationChecker",
     "ReputationResult",
+    # Knowledge Graph
+    "XacheGraphExtractTool",
+    "XacheGraphLoadTool",
+    "XacheGraphQueryTool",
+    "XacheGraphAskTool",
+    "XacheGraphAddEntityTool",
+    "XacheGraphAddRelationshipTool",
+    "XacheGraphMergeEntitiesTool",
+    "XacheGraphEntityHistoryTool",
+    "XacheGraphRetriever",
 ]

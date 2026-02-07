@@ -691,6 +691,8 @@ export interface MemoryListItem {
   context?: string;
   /** Tags array */
   tags?: string[];
+  /** Arbitrary metadata (set at store time) */
+  metadata?: Record<string, unknown>;
   /** Created timestamp */
   created_at: string;
   /** Last accessed timestamp */

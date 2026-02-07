@@ -1,6 +1,6 @@
 {
   "name": "@xache/langchain",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "LangChain.js integration for Xache Protocol - verifiable AI agent memory",
   "main": "dist/index.cjs",
   "module": "dist/index.mjs",
@@ -51,7 +51,7 @@
     "langchain": ">=0.3.37"
   },
   "dependencies": {
-    "@xache/sdk": "^5.4.0",
+    "@xache/sdk": "workspace:*",
     "zod": "^3.22.0"
   },
   "devDependencies": {

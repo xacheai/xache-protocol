@@ -182,6 +182,78 @@ Extract insights from this API integration session and contribute any valuable p
 Domain: "api-integration"
 ```
 
+### Knowledge Graph
+
+#### `xache_graph_extract`
+
+Extract entities and relationships from text into the knowledge graph.
+
+**Parameters:**
+- `trace` (required): The text to extract entities from
+- `domain` (optional): Domain hint (e.g., "engineering", "customer-support")
+- `mode` (optional): LLM mode - "byok" or "xache-managed"
+- `provider` (optional): LLM provider
+- `model` (optional): Specific model to use
+
+#### `xache_graph_load`
+
+Load the full knowledge graph.
+
+**Parameters:**
+- `entityTypes` (optional): Filter to specific entity types
+- `validAt` (optional): Load graph at a specific time (ISO8601)
+
+#### `xache_graph_query`
+
+Query the knowledge graph around a specific entity.
+
+**Parameters:**
+- `startEntity` (required): Entity name to start from
+- `depth` (optional): Number of hops (default: 2)
+
+#### `xache_graph_ask`
+
+Ask a natural language question about the knowledge graph.
+
+**Parameters:**
+- `question` (required): The question to ask
+- `mode` (optional): LLM mode
+- `provider` (optional): LLM provider
+
+#### `xache_graph_add_entity`
+
+Add an entity to the knowledge graph.
+
+**Parameters:**
+- `name` (required): Entity name
+- `type` (required): Entity type (person, organization, tool, concept, etc.)
+- `summary` (optional): Brief description
+
+#### `xache_graph_add_relationship`
+
+Create a relationship between two entities.
+
+**Parameters:**
+- `fromEntity` (required): Source entity name
+- `toEntity` (required): Target entity name
+- `type` (required): Relationship type (works_at, knows, uses, manages, etc.)
+- `description` (optional): Relationship description
+
+#### `xache_graph_merge_entities`
+
+Merge two entities into one. The source is superseded and the target is updated.
+
+**Parameters:**
+- `sourceName` (required): Entity to merge FROM
+- `targetName` (required): Entity to merge INTO
+
+#### `xache_graph_entity_history`
+
+Get the full version history of an entity.
+
+**Parameters:**
+- `name` (required): Entity name to look up
+
 ### Reputation
 
 #### `xache_check_reputation`

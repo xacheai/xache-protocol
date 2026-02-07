@@ -31,10 +31,19 @@ from .functions import (
     collective_contribute,
     collective_query,
     check_reputation,
+    graph_extract,
+    graph_load,
+    graph_query,
+    graph_ask,
+    graph_add_entity,
+    graph_add_relationship,
+    graph_merge_entities,
+    graph_entity_history,
+    extract_memories,
 )
 from .memory import XacheConversationMemory
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 __all__ = [
     # Agents
     "XacheMemoryAgent",
@@ -46,6 +55,17 @@ __all__ = [
     "collective_contribute",
     "collective_query",
     "check_reputation",
+    # Graph Functions
+    "graph_extract",
+    "graph_load",
+    "graph_query",
+    "graph_ask",
+    "graph_add_entity",
+    "graph_add_relationship",
+    "graph_merge_entities",
+    "graph_entity_history",
+    # Extraction
+    "extract_memories",
     # Memory
     "XacheConversationMemory",
 ]

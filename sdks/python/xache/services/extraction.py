@@ -287,6 +287,7 @@ class ExtractionService:
         auto_store: bool = False,
         confidence_threshold: Optional[float] = None,
         context_hint: Optional[str] = None,
+        subject: Optional[Dict[str, Any]] = None,
     ) -> ExtractionResult:
         """
         Convenience method: Extract memories using Anthropic
@@ -319,6 +320,7 @@ class ExtractionService:
                 auto_store=auto_store,
                 confidence_threshold=confidence_threshold,
                 context_hint=context_hint,
+                subject=subject,
             ),
         )
 
@@ -330,6 +332,7 @@ class ExtractionService:
         auto_store: bool = False,
         confidence_threshold: Optional[float] = None,
         context_hint: Optional[str] = None,
+        subject: Optional[Dict[str, Any]] = None,
     ) -> ExtractionResult:
         """
         Convenience method: Extract memories using OpenAI
@@ -363,6 +366,53 @@ class ExtractionService:
                 auto_store=auto_store,
                 confidence_threshold=confidence_threshold,
                 context_hint=context_hint,
+                subject=subject,
+            ),
+        )
+
+    async def extract_with_ollama(
+        self,
+        trace: Union[str, Dict[str, Any]],
+        url: str,
+        model: str,
+        auto_store: bool = False,
+        confidence_threshold: Optional[float] = None,
+        context_hint: Optional[str] = None,
+        subject: Optional[Dict[str, Any]] = None,
+    ) -> ExtractionResult:
+        """
+        Convenience method: Extract memories using Ollama.
+
+        Args:
+            trace: Conversation trace
+            url: Ollama endpoint URL
+            model: Model name (e.g., 'llama2')
+            auto_store: Whether to auto-store extracted memories
+            confidence_threshold: Minimum confidence threshold
+            context_hint: Context hint for extraction
+            subject: Subject context for auto-stored memories
+
+        Example:
+            ```python
+            result = await client.extraction.extract_with_ollama(
+                trace="User: I prefer dark mode...",
+                url="http://localhost:11434/v1/chat/completions",
+                model="llama2",
+            )
+            ```
+        """
+        return await self.extract(
+            trace=trace,
+            llm_config=LLMConfigEndpoint(
+                url=url,
+                model=model,
+                format='openai',  # Ollama supports OpenAI-compatible API
+            ),
+            options=ExtractionOptions(
+                auto_store=auto_store,
+                confidence_threshold=confidence_threshold,
+                context_hint=context_hint,
+                subject=subject,
             ),
         )
 
@@ -376,6 +426,7 @@ class ExtractionService:
         auto_store: bool = False,
         confidence_threshold: Optional[float] = None,
         context_hint: Optional[str] = None,
+        subject: Optional[Dict[str, Any]] = None,
     ) -> ExtractionResult:
         """
         Extract memories using custom endpoint (Ollama, OpenRouter, vLLM, etc.)
@@ -422,6 +473,7 @@ class ExtractionService:
                 auto_store=auto_store,
                 confidence_threshold=confidence_threshold,
                 context_hint=context_hint,
+                subject=subject,
             ),
         )
 
@@ -433,6 +485,7 @@ class ExtractionService:
         auto_store: bool = False,
         confidence_threshold: Optional[float] = None,
         context_hint: Optional[str] = None,
+        subject: Optional[Dict[str, Any]] = None,
     ) -> ExtractionResult:
         """
         Extract memories using Xache-managed LLM
@@ -469,5 +522,6 @@ class ExtractionService:
                 auto_store=auto_store,
                 confidence_threshold=confidence_threshold,
                 context_hint=context_hint,
+                subject=subject,
             ),
         )

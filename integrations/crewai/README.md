@@ -70,6 +70,19 @@ The `xache_tools()` function returns a set of tools for your agents:
 - **xache_collective_contribute** - Share insights with other agents
 - **xache_collective_query** - Learn from community knowledge
 
+#### Knowledge Graph Tools
+- **xache_graph_extract** - Extract entities/relationships from text
+- **xache_graph_load** - Load the full knowledge graph
+- **xache_graph_query** - Query graph around an entity
+- **xache_graph_ask** - Ask natural language questions about the graph
+- **xache_graph_add_entity** - Add an entity manually
+- **xache_graph_add_relationship** - Create a relationship between entities
+- **xache_graph_merge_entities** - Merge duplicate entities
+- **xache_graph_entity_history** - View entity version history
+
+#### Extraction Tools
+- **xache_extract_memories** - Extract memories from conversation text using LLM
+
 #### Reputation Tools
 - **xache_check_reputation** - View reputation score and ERC-8004 status
 
@@ -82,16 +95,17 @@ tools = xache_tools(
     private_key="0x...",
     include_memory=True,
     include_collective=False,
-    include_reputation=False
+    include_reputation=False,
+    include_graph=False,
+    include_extraction=False,
 )
 
-# Only collective tools
+# Graph + extraction with BYOK LLM
 tools = xache_tools(
     wallet_address="0x...",
     private_key="0x...",
-    include_memory=False,
-    include_collective=True,
-    include_reputation=False
+    llm_provider="anthropic",
+    llm_api_key="sk-ant-...",
 )
 ```
 
@@ -104,6 +118,10 @@ from xache_crewai import (
     XacheCollectiveContributeTool,
     XacheCollectiveQueryTool,
     XacheReputationTool,
+    XacheGraphExtractTool,
+    XacheGraphQueryTool,
+    XacheGraphAskTool,
+    XacheExtractionTool,
 )
 
 # Create specific tools
@@ -218,6 +236,9 @@ All operations use x402 micropayments (auto-handled):
 | Memory Retrieve | $0.003 |
 | Collective Contribute | $0.002 |
 | Collective Query | $0.011 |
+| Extraction (managed) | $0.011 |
+| Graph Operations | $0.002 |
+| Graph Ask (managed) | $0.011 |
 
 ## ERC-8004 Portable Reputation
 

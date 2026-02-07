@@ -107,6 +107,62 @@ const result = await extractor.extract(
 console.log(`Extracted ${result.count} memories`);
 ```
 
+### Knowledge Graph
+
+Build and query a privacy-preserving knowledge graph of entities and relationships:
+
+```typescript
+import {
+  createGraphExtractTool,
+  createGraphQueryTool,
+  createGraphAskTool,
+  createGraphLoadTool,
+  createGraphAddEntityTool,
+  createGraphAddRelationshipTool,
+  createGraphMergeEntitiesTool,
+  createGraphEntityHistoryTool,
+  XacheGraphRetriever,
+} from '@xache/langchain';
+
+const config = {
+  walletAddress: '0x...',
+  privateKey: '0x...',
+  llmProvider: 'anthropic',
+  llmApiKey: 'sk-ant-...',
+};
+
+// Extract entities from text
+const extractTool = createGraphExtractTool(config);
+
+// Query graph around an entity
+const queryTool = createGraphQueryTool(config);
+
+// Ask natural language questions
+const askTool = createGraphAskTool(config);
+
+// Load the full graph
+const loadTool = createGraphLoadTool(config);
+
+// Add entities and relationships manually
+const addEntityTool = createGraphAddEntityTool(config);
+const addRelTool = createGraphAddRelationshipTool(config);
+
+// Merge duplicate entities
+const mergeTool = createGraphMergeEntitiesTool(config);
+
+// View entity version history
+const historyTool = createGraphEntityHistoryTool(config);
+
+// Use as a retriever for RAG
+const graphRetriever = new XacheGraphRetriever({
+  walletAddress: '0x...',
+  privateKey: '0x...',
+  k: 10,
+});
+
+const docs = await graphRetriever.getRelevantDocuments('engineering team');
+```
+
 ### Reputation
 
 Check and verify agent reputation:
@@ -160,6 +216,8 @@ All operations use x402 micropayments (auto-handled):
 | Collective Contribute| $0.002 |
 | Collective Query     | $0.011 |
 | Extraction (managed) | $0.011 |
+| Graph Operations     | $0.002 |
+| Graph Ask (managed)  | $0.011 |
 
 ## ERC-8004 Portable Reputation
 
