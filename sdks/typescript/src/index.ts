@@ -235,9 +235,27 @@ export {
 // Crypto utilities (for advanced usage)
 export {
   generateAuthHeaders,
+  generateAuthHeadersAsync,
   validateDID,
   validateTimestamp,
 } from './crypto/signing';
+
+// Signing adapter abstraction (for external wallet/signer integration)
+export type { ISigningAdapter } from './crypto/SigningAdapter';
+export {
+  createSigningAdapter,
+  PrivateKeySigningAdapter,
+  ExternalSignerAdapter,
+  WalletProviderAdapter,
+  ReadOnlySigningAdapter,
+} from './crypto/SigningAdapter';
+
+// Convenience signer wrappers
+export {
+  createSignerFromEthersWallet,
+  createSignerFromSolanaKeypair,
+  createSignerFromAgentKit,
+} from './crypto/signerHelpers';
 
 export {
   encryptData,

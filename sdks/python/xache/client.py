@@ -12,7 +12,13 @@ from .crypto.signing import (
     derive_evm_address,
     derive_solana_address,
     generate_auth_headers,
+    generate_auth_headers_async,
     validate_did,
+)
+from .crypto.signer import (
+    SigningAdapter,
+    ReadOnlySigningAdapter,
+    create_signing_adapter,
 )
 from .crypto.subject import (
     SubjectContext,
@@ -75,7 +81,10 @@ class XacheClient:
         self,
         api_url: str,
         did: str,
-        private_key: str,
+        private_key: Optional[str] = None,
+        signer: Optional[Any] = None,
+        wallet_provider: Optional[Any] = None,
+        encryption_key: Optional[str] = None,
         payment_provider: Optional[Dict[str, Any]] = None,
         timeout: int = 30,
         debug: bool = False,
@@ -86,10 +95,19 @@ class XacheClient:
         # Store configuration
         self.api_url = api_url
         self.did = did
-        self.private_key = private_key
+        self.private_key = private_key  # Can be None when using signer/wallet_provider
         self.payment_provider = payment_provider
         self.timeout = timeout
         self.debug = debug
+
+        # Create signing adapter (private_key > signer > wallet_provider > ReadOnly)
+        self._signing_adapter: SigningAdapter = create_signing_adapter(
+            did=did,
+            private_key=private_key,
+            signer=signer,
+            wallet_provider=wallet_provider,
+            encryption_key=encryption_key,
+        )
 
         # Initialize HTTP client
         self._http_client = HttpClient(timeout=timeout, debug=debug)
@@ -132,7 +150,7 @@ class XacheClient:
         """Async context manager exit"""
         await self._http_client.__aexit__(exc_type, exc_val, exc_tb)
 
-    def _validate_config(self, api_url: str, did: str, private_key: str) -> None:
+    def _validate_config(self, api_url: str, did: str, private_key: Optional[str]) -> None:
         """Validate client configuration"""
         if not api_url:
             raise ValueError("api_url is required")
@@ -145,45 +163,44 @@ class XacheClient:
                 f"Invalid DID format: {did}. Expected: did:agent:<evm|sol>:<address>"
             )
 
-        if not private_key:
-            raise ValueError("private_key is required")
+        # private_key is optional — only validate if provided
+        if private_key:
+            # Validate private key format (hex string)
+            # EVM (secp256k1): 64 chars (32 bytes)
+            # Solana (ed25519): 64 chars (32-byte seed) or 128 chars (64-byte full keypair)
+            clean_key = private_key[2:] if private_key.startswith("0x") else private_key
+            is_valid_hex = all(c in "0123456789abcdefABCDEF" for c in clean_key)
+            is_valid_length = len(clean_key) in (64, 128)
 
-        # Validate private key format (hex string)
-        # EVM (secp256k1): 64 chars (32 bytes)
-        # Solana (ed25519): 64 chars (32-byte seed) or 128 chars (64-byte full keypair)
-        clean_key = private_key[2:] if private_key.startswith("0x") else private_key
-        is_valid_hex = all(c in "0123456789abcdefABCDEF" for c in clean_key)
-        is_valid_length = len(clean_key) in (64, 128)
+            if not is_valid_hex or not is_valid_length:
+                raise ValueError(
+                    "private_key must be a 64-character (EVM) or 64/128-character (Solana) hex string"
+                )
 
-        if not is_valid_hex or not is_valid_length:
-            raise ValueError(
-                "private_key must be a 64-character (EVM) or 64/128-character (Solana) hex string"
-            )
+            # Cross-validate: ensure private key matches the address in the DID
+            did_parts = did.split(":")
+            chain = did_parts[2]  # 'evm' or 'sol'
+            did_address = did_parts[3]  # wallet address
 
-        # Cross-validate: ensure private key matches the address in the DID
-        did_parts = did.split(":")
-        chain = did_parts[2]  # 'evm' or 'sol'
-        did_address = did_parts[3]  # wallet address
-
-        try:
-            if chain == "evm":
-                derived_address = derive_evm_address(clean_key)
-                if derived_address.lower() != did_address.lower():
-                    raise ValueError(
-                        f"Private key does not match DID address. "
-                        f"Expected: {did_address.lower()}, Got: {derived_address.lower()}"
-                    )
-            elif chain == "sol":
-                derived_address = derive_solana_address(clean_key)
-                if derived_address != did_address:
-                    raise ValueError(
-                        f"Private key does not match DID address. "
-                        f"Expected: {did_address}, Got: {derived_address}"
-                    )
-        except ValueError:
-            raise
-        except Exception as e:
-            raise ValueError(f"Failed to validate private key: {str(e)}")
+            try:
+                if chain == "evm":
+                    derived_address = derive_evm_address(clean_key)
+                    if derived_address.lower() != did_address.lower():
+                        raise ValueError(
+                            f"Private key does not match DID address. "
+                            f"Expected: {did_address.lower()}, Got: {derived_address.lower()}"
+                        )
+                elif chain == "sol":
+                    derived_address = derive_solana_address(clean_key)
+                    if derived_address != did_address:
+                        raise ValueError(
+                            f"Private key does not match DID address. "
+                            f"Expected: {did_address}, Got: {derived_address}"
+                        )
+            except ValueError:
+                raise
+            except Exception as e:
+                raise ValueError(f"Failed to validate private key: {str(e)}")
 
     async def request(
         self,
@@ -202,8 +219,13 @@ class XacheClient:
 
         # Add authentication headers (unless skipped)
         if not skip_auth:
-            auth_headers = generate_auth_headers(
-                method, path, body_str, self.did, self.private_key
+            if isinstance(self._signing_adapter, ReadOnlySigningAdapter):
+                raise RuntimeError(
+                    "private_key, signer, or wallet_provider is required for "
+                    "authenticated requests. This client is read-only."
+                )
+            auth_headers = await generate_auth_headers_async(
+                method, path, body_str, self.did, self._signing_adapter
             )
             headers.update(auth_headers)
 
@@ -411,6 +433,15 @@ class XacheClient:
 
             self._memory_helpers = MemoryHelpers(self)
         return self._memory_helpers
+
+    @property
+    def signing_adapter(self) -> "SigningAdapter":
+        """Get signing adapter (for internal use by services)"""
+        return self._signing_adapter
+
+    def is_read_only(self) -> bool:
+        """Check if client is in read-only mode (no signing capability)"""
+        return isinstance(self._signing_adapter, ReadOnlySigningAdapter)
 
     # ============================================================
     # Subject Keys Methods

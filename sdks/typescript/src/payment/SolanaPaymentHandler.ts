@@ -355,6 +355,99 @@ export class SolanaPaymentHandler {
   }
 
   /**
+   * Create x402 SVM payment payload using a signing adapter.
+   * Same logic as createPaymentPayload but routes signing through the adapter
+   * instead of requiring a raw Keypair.
+   */
+  async createPaymentPayloadWithAdapter(
+    challenge: X402Challenge,
+    adapter: import('../crypto/SigningAdapter').ISigningAdapter,
+    tokenDecimals: number = 6
+  ): Promise<X402SolanaPaymentPayload> {
+    try {
+      if (!challenge.feePayer) {
+        throw new Error(
+          'x402 SVM requires feePayer address from PaymentRequirements.extra.feePayer.'
+        );
+      }
+
+      const tokenMint = new PublicKey(challenge.asset);
+      const recipientPubkey = new PublicKey(challenge.payTo);
+      const feePayerPubkey = new PublicKey(challenge.feePayer);
+
+      // Get agent's public key from adapter
+      const agentAddress = await adapter.getAddress();
+      const agentPubkey = new PublicKey(agentAddress);
+
+      if (feePayerPubkey.equals(agentPubkey)) {
+        throw new Error('feePayer cannot be the agent. Per x402 SVM spec, CDP facilitator must be the fee payer.');
+      }
+
+      // Check balance
+      await this.checkBalance(agentPubkey, tokenMint, BigInt(challenge.maxAmountRequired));
+
+      // Get associated token accounts
+      const senderATA = await getAssociatedTokenAddress(tokenMint, agentPubkey, false, TOKEN_PROGRAM_ID);
+      const recipientATA = await getAssociatedTokenAddress(tokenMint, recipientPubkey, false, TOKEN_PROGRAM_ID);
+
+      const recipientATAInfo = await this.connection.getAccountInfo(recipientATA);
+      if (!recipientATAInfo) {
+        throw new Error(`Recipient token account does not exist: ${recipientATA.toBase58()}`);
+      }
+
+      // Build EXACTLY 3 instructions per x402 SVM spec
+      const instructions = [
+        ComputeBudgetProgram.setComputeUnitLimit({ units: 200_000 }),
+        ComputeBudgetProgram.setComputeUnitPrice({ microLamports: 1_000 }),
+        createTransferCheckedInstruction(
+          senderATA, tokenMint, recipientATA, agentPubkey,
+          BigInt(challenge.maxAmountRequired), tokenDecimals, [], TOKEN_PROGRAM_ID
+        ),
+      ];
+
+      const { blockhash } = await this.connection.getLatestBlockhash('confirmed');
+
+      const messageV0 = new TransactionMessage({
+        payerKey: feePayerPubkey,
+        recentBlockhash: blockhash,
+        instructions,
+      }).compileToV0Message();
+
+      const transaction = new VersionedTransaction(messageV0);
+
+      // Sign via adapter instead of raw keypair
+      await adapter.signSolanaTransaction(transaction);
+
+      const serializedTx = transaction.serialize();
+      const base64Transaction = Buffer.from(serializedTx).toString('base64');
+
+      const payload: X402SolanaPaymentPayload = {
+        x402Version: this.x402Version,
+        paymentPayload: {
+          scheme: challenge.scheme,
+          network: challenge.network,
+          payload: { transaction: base64Transaction },
+        },
+        paymentRequirements: {
+          scheme: challenge.scheme,
+          network: challenge.network,
+          maxAmountRequired: challenge.maxAmountRequired,
+          resource: challenge.resource,
+          description: challenge.description,
+          mimeType: challenge.mimeType,
+          payTo: challenge.payTo,
+          maxTimeoutSeconds: challenge.maxTimeoutSeconds,
+          asset: challenge.asset,
+        },
+      };
+
+      return payload;
+    } catch (error) {
+      throw new Error(`Failed to create Solana payment payload: ${(error as Error).message}`);
+    }
+  }
+
+  /**
    * Get Solana RPC URL for network
    */
   static getRpcUrl(network: string): string {

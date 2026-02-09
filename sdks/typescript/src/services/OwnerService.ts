@@ -227,4 +227,47 @@ export class OwnerService {
 
     return response.data;
   }
+
+  /**
+   * Purge all memories for a subject across owned agents (GDPR right-to-forget)
+   * This is irreversible. Receipts are optionally deleted.
+   * Requires owner authentication.
+   *
+   * @example
+   * ```typescript
+   * const result = await client.owner.purgeSubject({
+   *   subjectId: 'a1b2c3...', // 64-char hex subject ID
+   *   deleteReceipts: false,   // keep audit trail by default
+   * });
+   * console.log('Memories deleted:', result.memoriesDeleted);
+   * ```
+   */
+  async purgeSubject(params: {
+    subjectId: string;
+    deleteReceipts?: boolean;
+  }): Promise<{
+    subjectId: string;
+    memoriesDeleted: number;
+    receiptsDeleted?: number;
+  }> {
+    if (!params.subjectId) {
+      throw new Error('subjectId is required');
+    }
+
+    const response = await this.client.request<{
+      subjectId: string;
+      memoriesDeleted: number;
+      receiptsDeleted?: number;
+    }>(
+      'DELETE',
+      `/v1/subjects/${params.subjectId}/purge`,
+      { deleteReceipts: params.deleteReceipts || false }
+    );
+
+    if (!response.success || !response.data) {
+      throw new Error(response.error?.message || 'Subject purge failed');
+    }
+
+    return response.data;
+  }
 }

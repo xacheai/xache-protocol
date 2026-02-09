@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "xache"
-version = "5.6.0"
+version = "5.8.0"
 
 description = "Official Python SDK for Xache Protocol"
 readme = "README.md"

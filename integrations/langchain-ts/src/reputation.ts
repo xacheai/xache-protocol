@@ -5,13 +5,19 @@
 
 import { DynamicStructuredTool } from '@langchain/core/tools';
 import { z } from 'zod';
-import { XacheClient, DID } from '@xache/sdk';
+import { XacheClient, DID, type XacheSigner, type XacheWalletProvider } from '@xache/sdk';
 
 export interface ReputationToolConfig {
   /** Wallet address for authentication */
   walletAddress: string;
-  /** Private key for signing */
-  privateKey: string;
+  /** Private key for signing (optional if signer or walletProvider is provided) */
+  privateKey?: string;
+  /** External signer (alternative to privateKey) */
+  signer?: XacheSigner;
+  /** Wallet provider for lazy signer resolution */
+  walletProvider?: XacheWalletProvider;
+  /** Encryption key for use with external signers */
+  encryptionKey?: string;
   /** API URL (defaults to https://api.xache.xyz) */
   apiUrl?: string;
   /** Chain: 'base' or 'solana' */
@@ -55,6 +61,9 @@ function createClient(config: ReputationToolConfig): XacheClient {
     apiUrl: config.apiUrl || 'https://api.xache.xyz',
     did,
     privateKey: config.privateKey,
+    signer: config.signer,
+    walletProvider: config.walletProvider,
+    encryptionKey: config.encryptionKey,
   });
 }
 

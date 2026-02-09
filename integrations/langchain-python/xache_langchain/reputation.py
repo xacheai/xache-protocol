@@ -51,8 +51,11 @@ class XacheReputationTool(BaseTool):
     # Xache configuration
     api_url: str = "https://api.xache.xyz"
     wallet_address: str
-    private_key: str
+    private_key: Optional[str] = None
     chain: str = "base"
+    signer: Optional[Any] = None
+    wallet_provider: Optional[Any] = None
+    encryption_key: Optional[str] = None
 
     _client: Optional[XacheClient] = None
 
@@ -68,6 +71,9 @@ class XacheReputationTool(BaseTool):
             api_url=self.api_url,
             did=did,
             private_key=self.private_key,
+            signer=self.signer,
+            wallet_provider=self.wallet_provider,
+            encryption_key=self.encryption_key,
         )
 
     def _run(self) -> str:
@@ -160,9 +166,12 @@ class XacheReputationChecker:
     def __init__(
         self,
         wallet_address: str,
-        private_key: str,
+        private_key: Optional[str] = None,
         api_url: str = "https://api.xache.xyz",
         chain: str = "base",
+        signer: Optional[Any] = None,
+        wallet_provider: Optional[Any] = None,
+        encryption_key: Optional[str] = None,
     ):
         self.api_url = api_url
         self.chain = chain
@@ -174,6 +183,9 @@ class XacheReputationChecker:
             api_url=api_url,
             did=self.did,
             private_key=private_key,
+            signer=signer,
+            wallet_provider=wallet_provider,
+            encryption_key=encryption_key,
         )
 
     def check(self, agent_did: str) -> ReputationResult:

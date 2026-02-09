@@ -58,8 +58,11 @@ class XacheCollectiveContributeTool(BaseTool):
     # Xache configuration
     api_url: str = "https://api.xache.xyz"
     wallet_address: str
-    private_key: str
+    private_key: Optional[str] = None
     chain: str = "base"
+    signer: Optional[Any] = None
+    wallet_provider: Optional[Any] = None
+    encryption_key: Optional[str] = None
 
     _client: Optional[XacheClient] = None
 
@@ -75,6 +78,9 @@ class XacheCollectiveContributeTool(BaseTool):
             api_url=self.api_url,
             did=did,
             private_key=self.private_key,
+            signer=self.signer,
+            wallet_provider=self.wallet_provider,
+            encryption_key=self.encryption_key,
         )
 
     def _run(
@@ -164,8 +170,11 @@ class XacheCollectiveQueryTool(BaseTool):
     # Xache configuration
     api_url: str = "https://api.xache.xyz"
     wallet_address: str
-    private_key: str
+    private_key: Optional[str] = None
     chain: str = "base"
+    signer: Optional[Any] = None
+    wallet_provider: Optional[Any] = None
+    encryption_key: Optional[str] = None
 
     _client: Optional[XacheClient] = None
 
@@ -181,6 +190,9 @@ class XacheCollectiveQueryTool(BaseTool):
             api_url=self.api_url,
             did=did,
             private_key=self.private_key,
+            signer=self.signer,
+            wallet_provider=self.wallet_provider,
+            encryption_key=self.encryption_key,
         )
 
     def _run(

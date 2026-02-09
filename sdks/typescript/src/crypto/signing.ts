@@ -146,7 +146,7 @@ function signMessageSolana(message: string, privateKey: string): string {
 /**
  * Base58 encode bytes (Solana standard)
  */
-function base58Encode(bytes: Uint8Array): string {
+export function base58Encode(bytes: Uint8Array): string {
   const digits = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
   let num = BigInt('0x' + Buffer.from(bytes).toString('hex'));
   let encoded = '';
@@ -278,4 +278,42 @@ export function deriveSolanaAddress(privateKey: string): string {
   }
 
   return keypair.publicKey.toBase58();
+}
+
+/**
+ * Generate authentication headers using a signing adapter (async variant).
+ * Routes signing through the adapter instead of requiring a raw private key.
+ *
+ * @param method - HTTP method
+ * @param path - URL path WITH query string
+ * @param body - Request body (empty string for GET)
+ * @param did - Agent DID
+ * @param adapter - Signing adapter (ISigningAdapter)
+ * @returns Authentication headers
+ */
+export async function generateAuthHeadersAsync(
+  method: string,
+  path: string,
+  body: string,
+  did: DID,
+  adapter: import('./SigningAdapter').ISigningAdapter
+): Promise<Record<string, string>> {
+  if (!validateDID(did)) {
+    throw new Error(`Invalid DID format: ${did}`);
+  }
+
+  const timestamp = Date.now();
+
+  if (!validateTimestamp(timestamp)) {
+    throw new Error('Generated timestamp is outside acceptable window');
+  }
+
+  const message = createSignatureMessage(method, path, body, timestamp, did);
+  const signature = await adapter.signAuthMessage(message);
+
+  return {
+    'X-Agent-DID': did,
+    'X-Sig': signature,
+    'X-Ts': timestamp.toString(),
+  };
 }

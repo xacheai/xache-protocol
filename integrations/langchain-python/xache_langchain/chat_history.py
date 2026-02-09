@@ -4,7 +4,7 @@ Persistent chat history with verifiable receipts
 """
 
 import os
-from typing import List, Optional
+from typing import Any, List, Optional
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, SystemMessage
 from langchain_core.chat_history import BaseChatMessageHistory
 
@@ -37,26 +37,35 @@ class XacheChatMessageHistory(BaseChatMessageHistory):
     def __init__(
         self,
         wallet_address: str,
-        private_key: str,
-        session_id: str,
+        private_key: Optional[str] = None,
+        session_id: str = "",
         api_url: Optional[str] = None,
         chain: str = "base",
+        signer: Optional[Any] = None,
+        wallet_provider: Optional[Any] = None,
+        encryption_key: Optional[str] = None,
     ):
         """
         Initialize Xache chat history.
 
         Args:
             wallet_address: Wallet address for authentication
-            private_key: Private key for signing
+            private_key: Private key for signing (optional if signer provided)
             session_id: Unique session identifier
             api_url: Xache API URL
             chain: Blockchain (base, solana)
+            signer: Optional signer abstraction
+            wallet_provider: Optional wallet provider
+            encryption_key: Optional encryption key
         """
         self.wallet_address = wallet_address
         self.private_key = private_key
         self.session_id = session_id
         self.api_url = api_url or os.environ.get("XACHE_API_URL", "https://api.xache.xyz")
         self.chain = chain
+        self.signer = signer
+        self.wallet_provider = wallet_provider
+        self.encryption_key = encryption_key
 
         # Build DID
         chain_prefix = "sol" if chain == "solana" else "evm"
@@ -66,6 +75,9 @@ class XacheChatMessageHistory(BaseChatMessageHistory):
             api_url=api_url,
             did=self.did,
             private_key=private_key,
+            signer=self.signer,
+            wallet_provider=self.wallet_provider,
+            encryption_key=self.encryption_key,
         )
 
     @property

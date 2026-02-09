@@ -56,7 +56,10 @@ class XacheMemoryStoreTool(BaseTool):
     args_schema: Type[BaseModel] = MemoryStoreInput
 
     wallet_address: str
-    private_key: str
+    private_key: Optional[str] = Field(default=None, exclude=True, description="Private key for signing")
+    signer: Optional[Any] = Field(default=None, exclude=True, description="External signer (alternative to private_key)")
+    wallet_provider: Optional[Any] = Field(default=None, exclude=True, description="Wallet provider for lazy signer resolution")
+    encryption_key: Optional[str] = Field(default=None, exclude=True, description="Encryption key for use with external signers")
     api_url: Optional[str] = None
     chain: str = "base"
     timeout: int = 30000
@@ -75,6 +78,9 @@ class XacheMemoryStoreTool(BaseTool):
             api_url=self.api_url,
             did=did,
             private_key=self.private_key,
+            signer=self.signer,
+            wallet_provider=self.wallet_provider,
+            encryption_key=self.encryption_key,
             timeout=self.timeout,
             debug=self.debug,
         )
@@ -112,7 +118,10 @@ class XacheMemoryRetrieveTool(BaseTool):
     args_schema: Type[BaseModel] = MemoryRetrieveInput
 
     wallet_address: str
-    private_key: str
+    private_key: Optional[str] = Field(default=None, exclude=True, description="Private key for signing")
+    signer: Optional[Any] = Field(default=None, exclude=True, description="External signer (alternative to private_key)")
+    wallet_provider: Optional[Any] = Field(default=None, exclude=True, description="Wallet provider for lazy signer resolution")
+    encryption_key: Optional[str] = Field(default=None, exclude=True, description="Encryption key for use with external signers")
     api_url: Optional[str] = None
     chain: str = "base"
     timeout: int = 30000
@@ -130,6 +139,9 @@ class XacheMemoryRetrieveTool(BaseTool):
             api_url=self.api_url,
             did=did,
             private_key=self.private_key,
+            signer=self.signer,
+            wallet_provider=self.wallet_provider,
+            encryption_key=self.encryption_key,
             timeout=self.timeout,
             debug=self.debug,
         )
@@ -181,7 +193,10 @@ class XacheCollectiveContributeTool(BaseTool):
     args_schema: Type[BaseModel] = CollectiveContributeInput
 
     wallet_address: str
-    private_key: str
+    private_key: Optional[str] = Field(default=None, exclude=True, description="Private key for signing")
+    signer: Optional[Any] = Field(default=None, exclude=True, description="External signer (alternative to private_key)")
+    wallet_provider: Optional[Any] = Field(default=None, exclude=True, description="Wallet provider for lazy signer resolution")
+    encryption_key: Optional[str] = Field(default=None, exclude=True, description="Encryption key for use with external signers")
     api_url: Optional[str] = None
     chain: str = "base"
     timeout: int = 30000
@@ -199,6 +214,9 @@ class XacheCollectiveContributeTool(BaseTool):
             api_url=self.api_url,
             did=did,
             private_key=self.private_key,
+            signer=self.signer,
+            wallet_provider=self.wallet_provider,
+            encryption_key=self.encryption_key,
             timeout=self.timeout,
             debug=self.debug,
         )
@@ -241,7 +259,10 @@ class XacheCollectiveQueryTool(BaseTool):
     args_schema: Type[BaseModel] = CollectiveQueryInput
 
     wallet_address: str
-    private_key: str
+    private_key: Optional[str] = Field(default=None, exclude=True, description="Private key for signing")
+    signer: Optional[Any] = Field(default=None, exclude=True, description="External signer (alternative to private_key)")
+    wallet_provider: Optional[Any] = Field(default=None, exclude=True, description="Wallet provider for lazy signer resolution")
+    encryption_key: Optional[str] = Field(default=None, exclude=True, description="Encryption key for use with external signers")
     api_url: Optional[str] = None
     chain: str = "base"
     timeout: int = 30000
@@ -259,6 +280,9 @@ class XacheCollectiveQueryTool(BaseTool):
             api_url=self.api_url,
             did=did,
             private_key=self.private_key,
+            signer=self.signer,
+            wallet_provider=self.wallet_provider,
+            encryption_key=self.encryption_key,
             timeout=self.timeout,
             debug=self.debug,
         )
@@ -308,7 +332,10 @@ class XacheReputationTool(BaseTool):
     )
 
     wallet_address: str
-    private_key: str
+    private_key: Optional[str] = Field(default=None, exclude=True, description="Private key for signing")
+    signer: Optional[Any] = Field(default=None, exclude=True, description="External signer (alternative to private_key)")
+    wallet_provider: Optional[Any] = Field(default=None, exclude=True, description="Wallet provider for lazy signer resolution")
+    encryption_key: Optional[str] = Field(default=None, exclude=True, description="Encryption key for use with external signers")
     api_url: Optional[str] = None
     chain: str = "base"
     timeout: int = 30000
@@ -326,6 +353,9 @@ class XacheReputationTool(BaseTool):
             api_url=self.api_url,
             did=did,
             private_key=self.private_key,
+            signer=self.signer,
+            wallet_provider=self.wallet_provider,
+            encryption_key=self.encryption_key,
             timeout=self.timeout,
             debug=self.debug,
         )
@@ -434,7 +464,10 @@ class XacheGraphExtractTool(BaseTool):
     args_schema: Type[BaseModel] = GraphExtractInput
 
     wallet_address: str
-    private_key: str
+    private_key: Optional[str] = Field(default=None, exclude=True, description="Private key for signing")
+    signer: Optional[Any] = Field(default=None, exclude=True, description="External signer (alternative to private_key)")
+    wallet_provider: Optional[Any] = Field(default=None, exclude=True, description="Wallet provider for lazy signer resolution")
+    encryption_key: Optional[str] = Field(default=None, exclude=True, description="Encryption key for use with external signers")
     api_url: Optional[str] = None
     chain: str = "base"
     timeout: int = 30000
@@ -453,6 +486,8 @@ class XacheGraphExtractTool(BaseTool):
         did = f"did:agent:{chain_prefix}:{self.wallet_address.lower()}"
         self._client = XacheClient(
             api_url=self.api_url, did=did, private_key=self.private_key,
+            signer=self.signer, wallet_provider=self.wallet_provider,
+            encryption_key=self.encryption_key,
             timeout=self.timeout, debug=self.debug,
         )
 
@@ -492,7 +527,10 @@ class XacheGraphQueryTool(BaseTool):
     args_schema: Type[BaseModel] = GraphQueryInput
 
     wallet_address: str
-    private_key: str
+    private_key: Optional[str] = Field(default=None, exclude=True, description="Private key for signing")
+    signer: Optional[Any] = Field(default=None, exclude=True, description="External signer (alternative to private_key)")
+    wallet_provider: Optional[Any] = Field(default=None, exclude=True, description="Wallet provider for lazy signer resolution")
+    encryption_key: Optional[str] = Field(default=None, exclude=True, description="Encryption key for use with external signers")
     api_url: Optional[str] = None
     chain: str = "base"
     timeout: int = 30000
@@ -508,6 +546,8 @@ class XacheGraphQueryTool(BaseTool):
         did = f"did:agent:{chain_prefix}:{self.wallet_address.lower()}"
         self._client = XacheClient(
             api_url=self.api_url, did=did, private_key=self.private_key,
+            signer=self.signer, wallet_provider=self.wallet_provider,
+            encryption_key=self.encryption_key,
             timeout=self.timeout, debug=self.debug,
         )
 
@@ -541,7 +581,10 @@ class XacheGraphAskTool(BaseTool):
     args_schema: Type[BaseModel] = GraphAskInput
 
     wallet_address: str
-    private_key: str
+    private_key: Optional[str] = Field(default=None, exclude=True, description="Private key for signing")
+    signer: Optional[Any] = Field(default=None, exclude=True, description="External signer (alternative to private_key)")
+    wallet_provider: Optional[Any] = Field(default=None, exclude=True, description="Wallet provider for lazy signer resolution")
+    encryption_key: Optional[str] = Field(default=None, exclude=True, description="Encryption key for use with external signers")
     api_url: Optional[str] = None
     chain: str = "base"
     timeout: int = 30000
@@ -560,6 +603,8 @@ class XacheGraphAskTool(BaseTool):
         did = f"did:agent:{chain_prefix}:{self.wallet_address.lower()}"
         self._client = XacheClient(
             api_url=self.api_url, did=did, private_key=self.private_key,
+            signer=self.signer, wallet_provider=self.wallet_provider,
+            encryption_key=self.encryption_key,
             timeout=self.timeout, debug=self.debug,
         )
 
@@ -590,7 +635,10 @@ class XacheGraphAddEntityTool(BaseTool):
     args_schema: Type[BaseModel] = GraphAddEntityInput
 
     wallet_address: str
-    private_key: str
+    private_key: Optional[str] = Field(default=None, exclude=True, description="Private key for signing")
+    signer: Optional[Any] = Field(default=None, exclude=True, description="External signer (alternative to private_key)")
+    wallet_provider: Optional[Any] = Field(default=None, exclude=True, description="Wallet provider for lazy signer resolution")
+    encryption_key: Optional[str] = Field(default=None, exclude=True, description="Encryption key for use with external signers")
     api_url: Optional[str] = None
     chain: str = "base"
     timeout: int = 30000
@@ -606,6 +654,8 @@ class XacheGraphAddEntityTool(BaseTool):
         did = f"did:agent:{chain_prefix}:{self.wallet_address.lower()}"
         self._client = XacheClient(
             api_url=self.api_url, did=did, private_key=self.private_key,
+            signer=self.signer, wallet_provider=self.wallet_provider,
+            encryption_key=self.encryption_key,
             timeout=self.timeout, debug=self.debug,
         )
 
@@ -626,7 +676,10 @@ class XacheGraphAddRelationshipTool(BaseTool):
     args_schema: Type[BaseModel] = GraphAddRelationshipInput
 
     wallet_address: str
-    private_key: str
+    private_key: Optional[str] = Field(default=None, exclude=True, description="Private key for signing")
+    signer: Optional[Any] = Field(default=None, exclude=True, description="External signer (alternative to private_key)")
+    wallet_provider: Optional[Any] = Field(default=None, exclude=True, description="Wallet provider for lazy signer resolution")
+    encryption_key: Optional[str] = Field(default=None, exclude=True, description="Encryption key for use with external signers")
     api_url: Optional[str] = None
     chain: str = "base"
     timeout: int = 30000
@@ -642,6 +695,8 @@ class XacheGraphAddRelationshipTool(BaseTool):
         did = f"did:agent:{chain_prefix}:{self.wallet_address.lower()}"
         self._client = XacheClient(
             api_url=self.api_url, did=did, private_key=self.private_key,
+            signer=self.signer, wallet_provider=self.wallet_provider,
+            encryption_key=self.encryption_key,
             timeout=self.timeout, debug=self.debug,
         )
 
@@ -666,7 +721,10 @@ class XacheGraphLoadTool(BaseTool):
     args_schema: Type[BaseModel] = GraphLoadInput
 
     wallet_address: str
-    private_key: str
+    private_key: Optional[str] = Field(default=None, exclude=True, description="Private key for signing")
+    signer: Optional[Any] = Field(default=None, exclude=True, description="External signer (alternative to private_key)")
+    wallet_provider: Optional[Any] = Field(default=None, exclude=True, description="Wallet provider for lazy signer resolution")
+    encryption_key: Optional[str] = Field(default=None, exclude=True, description="Encryption key for use with external signers")
     api_url: Optional[str] = None
     chain: str = "base"
     timeout: int = 30000
@@ -682,6 +740,8 @@ class XacheGraphLoadTool(BaseTool):
         did = f"did:agent:{chain_prefix}:{self.wallet_address.lower()}"
         self._client = XacheClient(
             api_url=self.api_url, did=did, private_key=self.private_key,
+            signer=self.signer, wallet_provider=self.wallet_provider,
+            encryption_key=self.encryption_key,
             timeout=self.timeout, debug=self.debug,
         )
 
@@ -715,7 +775,10 @@ class XacheGraphMergeEntitiesTool(BaseTool):
     args_schema: Type[BaseModel] = GraphMergeEntitiesInput
 
     wallet_address: str
-    private_key: str
+    private_key: Optional[str] = Field(default=None, exclude=True, description="Private key for signing")
+    signer: Optional[Any] = Field(default=None, exclude=True, description="External signer (alternative to private_key)")
+    wallet_provider: Optional[Any] = Field(default=None, exclude=True, description="Wallet provider for lazy signer resolution")
+    encryption_key: Optional[str] = Field(default=None, exclude=True, description="Encryption key for use with external signers")
     api_url: Optional[str] = None
     chain: str = "base"
     timeout: int = 30000
@@ -731,6 +794,8 @@ class XacheGraphMergeEntitiesTool(BaseTool):
         did = f"did:agent:{chain_prefix}:{self.wallet_address.lower()}"
         self._client = XacheClient(
             api_url=self.api_url, did=did, private_key=self.private_key,
+            signer=self.signer, wallet_provider=self.wallet_provider,
+            encryption_key=self.encryption_key,
             timeout=self.timeout, debug=self.debug,
         )
 
@@ -754,7 +819,10 @@ class XacheGraphEntityHistoryTool(BaseTool):
     args_schema: Type[BaseModel] = GraphEntityHistoryInput
 
     wallet_address: str
-    private_key: str
+    private_key: Optional[str] = Field(default=None, exclude=True, description="Private key for signing")
+    signer: Optional[Any] = Field(default=None, exclude=True, description="External signer (alternative to private_key)")
+    wallet_provider: Optional[Any] = Field(default=None, exclude=True, description="Wallet provider for lazy signer resolution")
+    encryption_key: Optional[str] = Field(default=None, exclude=True, description="Encryption key for use with external signers")
     api_url: Optional[str] = None
     chain: str = "base"
     timeout: int = 30000
@@ -770,6 +838,8 @@ class XacheGraphEntityHistoryTool(BaseTool):
         did = f"did:agent:{chain_prefix}:{self.wallet_address.lower()}"
         self._client = XacheClient(
             api_url=self.api_url, did=did, private_key=self.private_key,
+            signer=self.signer, wallet_provider=self.wallet_provider,
+            encryption_key=self.encryption_key,
             timeout=self.timeout, debug=self.debug,
         )
 
@@ -801,7 +871,10 @@ class XacheExtractionTool(BaseTool):
     args_schema: Type[BaseModel] = ExtractionInput
 
     wallet_address: str
-    private_key: str
+    private_key: Optional[str] = Field(default=None, exclude=True, description="Private key for signing")
+    signer: Optional[Any] = Field(default=None, exclude=True, description="External signer (alternative to private_key)")
+    wallet_provider: Optional[Any] = Field(default=None, exclude=True, description="Wallet provider for lazy signer resolution")
+    encryption_key: Optional[str] = Field(default=None, exclude=True, description="Encryption key for use with external signers")
     api_url: Optional[str] = None
     chain: str = "base"
     timeout: int = 30000
@@ -820,6 +893,8 @@ class XacheExtractionTool(BaseTool):
         did = f"did:agent:{chain_prefix}:{self.wallet_address.lower()}"
         self._client = XacheClient(
             api_url=self.api_url, did=did, private_key=self.private_key,
+            signer=self.signer, wallet_provider=self.wallet_provider,
+            encryption_key=self.encryption_key,
             timeout=self.timeout, debug=self.debug,
         )
 
@@ -850,7 +925,7 @@ class XacheExtractionTool(BaseTool):
 
 def xache_tools(
     wallet_address: str,
-    private_key: str,
+    private_key: Optional[str] = None,
     api_url: Optional[str] = None,
     chain: str = "base",
     include_memory: bool = True,
@@ -863,13 +938,16 @@ def xache_tools(
     llm_model: str = "",
     timeout: int = 30000,
     debug: bool = False,
+    signer: Optional[Any] = None,
+    wallet_provider: Optional[Any] = None,
+    encryption_key: Optional[str] = None,
 ) -> List[BaseTool]:
     """
     Create a set of Xache tools for CrewAI agents.
 
     Args:
         wallet_address: Wallet address for authentication
-        private_key: Private key for signing
+        private_key: Private key for signing (optional if signer/wallet_provider provided)
         api_url: Xache API URL
         chain: Chain to use ('base' or 'solana')
         include_memory: Include memory tools
@@ -882,6 +960,9 @@ def xache_tools(
         llm_model: LLM model override
         timeout: Request timeout in milliseconds (default: 30000)
         debug: Enable debug logging
+        signer: External signer (alternative to private_key)
+        wallet_provider: Wallet provider for lazy signer resolution
+        encryption_key: Encryption key for use with external signers
 
     Returns:
         List of CrewAI tools
@@ -907,6 +988,9 @@ def xache_tools(
     config: Dict[str, Any] = {
         "wallet_address": wallet_address,
         "private_key": private_key,
+        "signer": signer,
+        "wallet_provider": wallet_provider,
+        "encryption_key": encryption_key,
         "api_url": api_url,
         "chain": chain,
         "timeout": timeout,

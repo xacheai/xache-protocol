@@ -276,6 +276,50 @@ class OwnerService:
             "count": response.data.get("count", 0),
         }
 
+    async def purge_subject(
+        self,
+        subject_id: str,
+        delete_receipts: bool = False,
+    ) -> Dict:
+        """
+        Purge all memories for a subject across owned agents (GDPR right-to-forget)
+        This is irreversible. Receipts are optionally deleted.
+        Requires owner authentication.
+
+        Args:
+            subject_id: 64-char hex subject ID
+            delete_receipts: Whether to also delete receipts (default False)
+
+        Returns:
+            Dict with subjectId, memoriesDeleted, and optionally receiptsDeleted
+
+        Example:
+            ```python
+            result = await client.owner.purge_subject(
+                subject_id="a1b2c3...",
+                delete_receipts=False,
+            )
+            print(f"Memories deleted: {result['memoriesDeleted']}")
+            ```
+        """
+        if not subject_id:
+            raise ValueError("subject_id is required")
+
+        response = await self.client.request(
+            "DELETE",
+            f"/v1/subjects/{subject_id}/purge",
+            {"deleteReceipts": delete_receipts},
+        )
+
+        if not response.success or not response.data:
+            raise Exception(
+                response.error.get("message", "Subject purge failed")
+                if response.error
+                else "Subject purge failed"
+            )
+
+        return response.data
+
     def _parse_owner(self, data: dict) -> Owner:
         """Parse owner data into Owner object"""
         return Owner(

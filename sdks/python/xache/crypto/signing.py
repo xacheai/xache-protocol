@@ -9,7 +9,7 @@ IMPORTANT: Solana signatures are returned as base58 to match server-side verific
 import hashlib
 import re
 import time
-from typing import Dict
+from typing import Any, Dict
 
 import base58
 from eth_account import Account
@@ -229,6 +229,45 @@ def generate_auth_headers(
     signature = sign_request(method, path, body, timestamp, did, private_key)
 
     # Return headers per LLD §2.1
+    return {
+        "X-Agent-DID": did,
+        "X-Sig": signature,
+        "X-Ts": str(timestamp),
+    }
+
+
+async def generate_auth_headers_async(
+    method: str,
+    path: str,
+    body: str,
+    did: str,
+    adapter: "Any",  # SigningAdapter
+) -> Dict[str, str]:
+    """
+    Generate authentication headers using a signing adapter (async variant).
+    Routes signing through the adapter instead of requiring a raw private key.
+
+    Args:
+        method: HTTP method
+        path: URL path
+        body: Request body (empty string for GET)
+        did: Agent DID
+        adapter: SigningAdapter instance
+
+    Returns:
+        Authentication headers
+    """
+    if not validate_did(did):
+        raise ValueError(f"Invalid DID format: {did}")
+
+    timestamp = int(time.time() * 1000)
+
+    if not validate_timestamp(timestamp):
+        raise ValueError("Generated timestamp is outside acceptable window")
+
+    message = create_signature_message(method, path, body, timestamp, did)
+    signature = await adapter.sign_auth_message(message)
+
     return {
         "X-Agent-DID": did,
         "X-Sig": signature,

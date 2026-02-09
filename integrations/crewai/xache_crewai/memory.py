@@ -40,9 +40,12 @@ class XacheMemory:
     def __init__(
         self,
         wallet_address: str,
-        private_key: str,
+        private_key: Optional[str] = None,
         api_url: Optional[str] = None,
         chain: str = "base",
+        signer: Optional[Any] = None,
+        wallet_provider: Optional[Any] = None,
+        encryption_key: Optional[str] = None,
     ):
         self.wallet_address = wallet_address
         self.api_url = api_url or os.environ.get("XACHE_API_URL", "https://api.xache.xyz")
@@ -55,6 +58,9 @@ class XacheMemory:
             api_url=self.api_url,
             did=self.did,
             private_key=private_key,
+            signer=signer,
+            wallet_provider=wallet_provider,
+            encryption_key=encryption_key,
         )
 
         # Local cache for session

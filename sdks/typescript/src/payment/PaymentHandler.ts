@@ -128,25 +128,25 @@ export interface RpcUrlConfig {
  * Payment handler with CDP ERC-3009 support
  */
 export class PaymentHandler {
-  private readonly privateKey: string;
+  private readonly adapter: import('../crypto/SigningAdapter').ISigningAdapter;
   private readonly debug: boolean;
   private readonly x402Version: X402Version;
   private readonly customRpcUrls: RpcUrlConfig;
 
   /**
    * Create a payment handler
-   * @param privateKey - Wallet private key for signing
+   * @param adapter - Signing adapter for wallet operations
    * @param debug - Enable debug logging
    * @param x402Version - x402 protocol version (default: 2)
    * @param rpcUrls - Custom RPC URL overrides
    */
   constructor(
-    privateKey: string,
+    adapter: import('../crypto/SigningAdapter').ISigningAdapter,
     debug: boolean = false,
     x402Version: X402Version = 2,
     rpcUrls?: RpcUrlConfig
   ) {
-    this.privateKey = privateKey;
+    this.adapter = adapter;
     this.debug = debug;
     this.x402Version = x402Version;
     this.customRpcUrls = rpcUrls || {};
@@ -219,20 +219,20 @@ export class PaymentHandler {
         });
       }
 
-      // Create provider and wallet
+      // Create read-only provider for balance checks
       const provider = new ethers.JsonRpcProvider(rpcUrl);
-      const wallet = new ethers.Wallet(this.privateKey, provider);
+      const walletAddress = await this.adapter.getAddress();
 
-      // Create USDC contract interface
+      // Create USDC contract interface (read-only)
       const usdcContract = new ethers.Contract(challenge.asset, USDC_ERC3009_ABI, provider);
 
       // Check USDC balance
-      const usdcBalance = await usdcContract.balanceOf(wallet.address);
+      const usdcBalance = await usdcContract.balanceOf(walletAddress);
       const requiredAmount = BigInt(challenge.amount);
 
       if (this.debug) {
         console.log('[PaymentHandler] Balance check:', {
-          address: wallet.address,
+          address: walletAddress,
           usdcBalance: usdcBalance.toString(),
           requiredAmount: challenge.amount,
         });
@@ -245,7 +245,7 @@ export class PaymentHandler {
         throw new Error(
           `Insufficient USDC balance. ` +
           `Have: $${balanceUSD.toFixed(6)} USDC, Need: $${requiredUSD.toFixed(6)} USDC. ` +
-          `Please fund wallet ${wallet.address} with testnet USDC on ${challenge.network}.`
+          `Please fund wallet ${walletAddress} with testnet USDC on ${challenge.network}.`
         );
       }
 
@@ -253,7 +253,7 @@ export class PaymentHandler {
       const nonce = ethers.hexlify(ethers.randomBytes(32));
 
       // Check if authorization already exists (safety check)
-      const authState = await usdcContract.authorizationState(wallet.address, nonce);
+      const authState = await usdcContract.authorizationState(walletAddress, nonce);
       if (authState) {
         throw new Error('Authorization nonce already used');
       }
@@ -265,7 +265,7 @@ export class PaymentHandler {
 
       // Create authorization parameters
       const authorization: ReceiveAuthorization = {
-        from: wallet.address,
+        from: walletAddress,
         to: challenge.payTo,
         value: challenge.amount,
         validAfter: validAfter.toString(),
@@ -306,8 +306,8 @@ export class PaymentHandler {
         ],
       };
 
-      // Sign the authorization using EIP-712
-      const signature = await wallet.signTypedData(domain, types, authorization);
+      // Sign the authorization using EIP-712 via signing adapter
+      const signature = await this.adapter.signTypedData(domain, types, authorization as unknown as Record<string, unknown>);
 
       // Split signature into v, r, s components
       const sig = ethers.Signature.from(signature);
@@ -434,10 +434,6 @@ export class PaymentHandler {
       // Create Solana payment handler with same x402 version
       const handler = new SolanaPaymentHandler(rpcUrl, this.x402Version);
 
-      // Create keypair from private key
-      const { Keypair } = await import('@solana/web3.js');
-      const keypair = Keypair.fromSecretKey(Buffer.from(this.privateKey, 'hex'));
-
       // Validate feePayer is present (required for x402 SVM)
       if (!challenge.feePayer) {
         throw new Error(
@@ -469,10 +465,18 @@ export class PaymentHandler {
         });
       }
 
-      const paymentPayload = await handler.createPaymentPayload(
-        x402Challenge,
-        keypair
-      );
+      let paymentPayload;
+      if (this.adapter.hasPrivateKey()) {
+        // Fast path: use raw keypair when private key available (backward compat)
+        const { Keypair } = await import('@solana/web3.js');
+        const pkHex = this.adapter.getPrivateKey()!;
+        const cleanKey = pkHex.startsWith('0x') ? pkHex.slice(2) : pkHex;
+        const keypair = Keypair.fromSecretKey(Buffer.from(cleanKey, 'hex'));
+        paymentPayload = await handler.createPaymentPayload(x402Challenge, keypair);
+      } else {
+        // External signer path: use adapter for signing
+        paymentPayload = await handler.createPaymentPayloadWithAdapter(x402Challenge, this.adapter);
+      }
 
       // Encode the full x402 structure as base64 JSON for payment header
       const paymentHeader = Buffer.from(JSON.stringify(paymentPayload)).toString('base64');

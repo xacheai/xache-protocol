@@ -222,10 +222,11 @@ export interface XacheSigner {
   ): Promise<string>;
 
   /**
-   * Sign raw message bytes (optional, for Solana or general signatures).
-   * Returns signature bytes.
+   * Sign raw message bytes (required for auth header signing).
+   * For EVM: sign raw keccak256 hash, return 65-byte (r+s+v) signature.
+   * For Solana: sign raw message bytes with ed25519, return 64-byte signature.
    */
-  signMessage?(message: Uint8Array): Promise<Uint8Array>;
+  signMessage(message: Uint8Array): Promise<Uint8Array>;
 }
 
 /**
@@ -284,6 +285,14 @@ export interface XacheClientConfig {
    * If both privateKey and walletProvider are provided, privateKey takes precedence.
    */
   walletProvider?: XacheWalletProvider;
+
+  /**
+   * Explicit encryption key (hex or base64). When provided, overrides
+   * the default BLAKE2b(privateKey+DID) derivation for memory encryption.
+   * Required when using external signers to maintain compatibility with
+   * previously encrypted data.
+   */
+  encryptionKey?: string;
 
   /** Payment provider configuration */
   paymentProvider?: PaymentProviderConfig;

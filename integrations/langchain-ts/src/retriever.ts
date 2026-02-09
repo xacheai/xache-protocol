@@ -6,13 +6,19 @@
 import { BaseRetriever, BaseRetrieverInput } from '@langchain/core/retrievers';
 import { Document } from '@langchain/core/documents';
 import { CallbackManagerForRetrieverRun } from '@langchain/core/callbacks/manager';
-import { XacheClient, DID } from '@xache/sdk';
+import { XacheClient, DID, type XacheSigner, type XacheWalletProvider } from '@xache/sdk';
 
 export interface XacheRetrieverConfig extends BaseRetrieverInput {
   /** Wallet address for authentication */
   walletAddress: string;
-  /** Private key for signing */
-  privateKey: string;
+  /** Private key for signing (optional if signer or walletProvider is provided) */
+  privateKey?: string;
+  /** External signer (alternative to privateKey) */
+  signer?: XacheSigner;
+  /** Wallet provider for lazy signer resolution */
+  walletProvider?: XacheWalletProvider;
+  /** Encryption key for use with external signers */
+  encryptionKey?: string;
   /** Number of documents to retrieve */
   k?: number;
   /** Filter by context */
@@ -65,6 +71,9 @@ export class XacheRetriever extends BaseRetriever {
       apiUrl: config.apiUrl || 'https://api.xache.xyz',
       did,
       privateKey: config.privateKey,
+      signer: config.signer,
+      walletProvider: config.walletProvider,
+      encryptionKey: config.encryptionKey,
     });
 
     this.k = config.k ?? 5;

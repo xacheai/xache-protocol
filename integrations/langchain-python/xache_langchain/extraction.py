@@ -70,7 +70,7 @@ class XacheExtractor:
     def __init__(
         self,
         wallet_address: str,
-        private_key: str,
+        private_key: Optional[str] = None,
         api_url: Optional[str] = None,
         chain: str = "base",
         mode: str = "xache-managed",
@@ -80,6 +80,9 @@ class XacheExtractor:
         llm_endpoint_format: str = "openai",
         llm_auth_token: Optional[str] = None,
         llm_model: Optional[str] = None,
+        signer: Optional[Any] = None,
+        wallet_provider: Optional[Any] = None,
+        encryption_key: Optional[str] = None,
     ):
         """
         Initialize Xache extractor.
@@ -132,6 +135,9 @@ class XacheExtractor:
             api_url=self.api_url,
             did=self.did,
             private_key=private_key,
+            signer=signer,
+            wallet_provider=wallet_provider,
+            encryption_key=encryption_key,
         )
 
     def extract(

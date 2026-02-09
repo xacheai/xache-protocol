@@ -619,15 +619,33 @@ export class MemoryService {
 
   /**
    * Derive encryption key from client configuration using libsodium
-   * Uses BLAKE2b hash function for deterministic key derivation
+   * Uses BLAKE2b hash function for deterministic key derivation.
+   * Routes through signing adapter to support privateKey, signer, and walletProvider modes.
    */
   private async deriveEncryptionKey(): Promise<string> {
     await sodium.ready;
 
     const config = this.client.getConfig();
+    const adapter = this.client.getSigningAdapter();
 
-    // Derive key from private key and DID using BLAKE2b
-    const keyMaterial = config.privateKey + config.did;
+    // Get encryption seed from adapter:
+    // - PrivateKey mode: returns privateKey (identical to existing behavior)
+    // - External signer with encryptionKey config: returns encryptionKey
+    // - External signer fallback: returns wallet address
+    const seed = await adapter.getEncryptionSeed();
+
+    // Warn if using address-derived fallback (data won't be compatible with privateKey-derived keys)
+    if (!adapter.hasPrivateKey() && !config.encryptionKey) {
+      console.warn(
+        '[Xache] WARNING: Using external signer without encryptionKey config. ' +
+        'Encryption key will be derived from wallet address, NOT a private key. ' +
+        'Existing encrypted memories from privateKey mode will NOT be decryptable. ' +
+        'To maintain compatibility, pass encryptionKey in XacheClientConfig.'
+      );
+    }
+
+    // Derive key from seed and DID using BLAKE2b
+    const keyMaterial = seed + config.did;
     const keyMaterialBytes = new TextEncoder().encode(keyMaterial);
 
     // Use crypto_generichash (BLAKE2b) for deterministic key derivation
@@ -741,5 +759,117 @@ export class MemoryService {
    */
   async recallPatterns(opts?: { success?: boolean; limit?: number }) {
     return this.helpers.recallPatterns(opts);
+  }
+
+  // ========== Memory Management (Restore / Purge / List Deleted) ==========
+
+  /**
+   * Restore a soft-deleted memory (clears deleted_at)
+   * Free (no payment required)
+   *
+   * @example
+   * ```typescript
+   * const result = await client.memory.restore('mem_abc123_xyz');
+   * console.log('Restored:', result.restored);
+   * ```
+   */
+  async restore(storageKey: string): Promise<{ storageKey: string; restored: boolean }> {
+    if (!storageKey) {
+      throw new Error('storageKey is required');
+    }
+
+    const response = await this.client.request<{ storageKey: string; restored: boolean }>(
+      'POST',
+      `/v1/memory/${storageKey}/restore`
+    );
+
+    if (!response.success || !response.data) {
+      throw new Error(response.error?.message || 'Memory restore failed');
+    }
+
+    return response.data;
+  }
+
+  /**
+   * Permanently purge a memory (hard delete R2 blob + DB row)
+   * Receipts are preserved for audit trail. This is irreversible.
+   * Free (no payment required)
+   *
+   * @example
+   * ```typescript
+   * const result = await client.memory.purge('mem_abc123_xyz');
+   * console.log('Purged:', result.purged, 'R2 deleted:', result.r2Deleted);
+   * ```
+   */
+  async purge(storageKey: string): Promise<{ storageKey: string; purged: boolean; r2Deleted: boolean }> {
+    if (!storageKey) {
+      throw new Error('storageKey is required');
+    }
+
+    const response = await this.client.request<{ storageKey: string; purged: boolean; r2Deleted: boolean }>(
+      'DELETE',
+      `/v1/memory/${storageKey}/purge`
+    );
+
+    if (!response.success || !response.data) {
+      throw new Error(response.error?.message || 'Memory purge failed');
+    }
+
+    return response.data;
+  }
+
+  /**
+   * List soft-deleted memories for recovery
+   * Free (no payment required)
+   *
+   * @example
+   * ```typescript
+   * const result = await client.memory.listDeleted({ limit: 20 });
+   * console.log('Deleted memories:', result.total);
+   * result.memories.forEach(m => {
+   *   console.log(`${m.storageKey} deleted at ${m.deletedAt}`);
+   * });
+   * ```
+   */
+  async listDeleted(params?: {
+    agentDID?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<{
+    memories: Array<{
+      storageKey: string;
+      context: string;
+      tags: string[];
+      deletedAt: string;
+      createdAt: string;
+      storageTier: string;
+      subjectId?: string;
+      scope?: string;
+      sizeBytes?: number;
+    }>;
+    total: number;
+    limit: number;
+    offset: number;
+  }> {
+    const searchParams = new URLSearchParams();
+    if (params?.agentDID) searchParams.set('agentDID', params.agentDID);
+    if (params?.limit) searchParams.set('limit', String(params.limit));
+    if (params?.offset) searchParams.set('offset', String(params.offset));
+
+    const query = searchParams.toString();
+    const url = `/v1/memory/deleted${query ? '?' + query : ''}`;
+
+    const response = await this.client.request<{
+      memories: any[];
+      total: number;
+      limit: number;
+      offset: number;
+    }>('GET', url);
+
+    if (!response.success || !response.data) {
+      throw new Error(response.error?.message || 'List deleted memories failed');
+    }
+
+    return response.data;
   }
 }

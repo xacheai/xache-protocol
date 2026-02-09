@@ -5,7 +5,7 @@ Persistent storage for conversation history and context
 
 import os
 import uuid
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, TYPE_CHECKING
 
 from xache import XacheClient
 from ._async_utils import run_sync
@@ -43,10 +43,13 @@ class XacheConversationMemory:
     def __init__(
         self,
         wallet_address: str,
-        private_key: str,
+        private_key: Optional[str] = None,
         conversation_id: Optional[str] = None,
         api_url: Optional[str] = None,
         chain: str = "base",
+        signer: Optional[Any] = None,
+        wallet_provider: Optional[Any] = None,
+        encryption_key: Optional[str] = None,
     ):
         self.wallet_address = wallet_address
         self.api_url = api_url or os.environ.get("XACHE_API_URL", "https://api.xache.xyz")
@@ -61,6 +64,9 @@ class XacheConversationMemory:
             api_url=self.api_url,
             did=self.did,
             private_key=private_key,
+            signer=signer,
+            wallet_provider=wallet_provider,
+            encryption_key=encryption_key,
         )
 
         # Local message buffer

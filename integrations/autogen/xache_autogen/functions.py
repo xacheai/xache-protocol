@@ -4,7 +4,7 @@ Function definitions that can be registered with AutoGen agents
 """
 
 import os
-from typing import Any, Dict, List, Optional, Callable
+from typing import Any, Callable, Dict, List, Optional
 
 from xache import XacheClient
 from ._async_utils import run_sync
@@ -12,9 +12,12 @@ from ._async_utils import run_sync
 
 def create_xache_client(
     wallet_address: str,
-    private_key: str,
+    private_key: Optional[str] = None,
     api_url: Optional[str] = None,
     chain: str = "base",
+    signer: Optional[Any] = None,
+    wallet_provider: Optional[Any] = None,
+    encryption_key: Optional[str] = None,
 ) -> XacheClient:
     """Create an Xache client instance"""
     chain_prefix = "sol" if chain == "solana" else "evm"
@@ -24,6 +27,9 @@ def create_xache_client(
         api_url=resolved_api_url,
         did=did,
         private_key=private_key,
+        signer=signer,
+        wallet_provider=wallet_provider,
+        encryption_key=encryption_key,
     )
 
 
@@ -33,9 +39,12 @@ def memory_store(
     tags: Optional[List[str]] = None,
     *,
     wallet_address: str,
-    private_key: str,
+    private_key: Optional[str] = None,
     api_url: Optional[str] = None,
     chain: str = "base",
+    signer: Optional[Any] = None,
+    wallet_provider: Optional[Any] = None,
+    encryption_key: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Store a memory with cryptographic receipt.
@@ -52,7 +61,7 @@ def memory_store(
     Returns:
         Dict with memoryId and receiptId
     """
-    client = create_xache_client(wallet_address, private_key, api_url, chain)
+    client = create_xache_client(wallet_address, private_key, api_url, chain, signer=signer, wallet_provider=wallet_provider, encryption_key=encryption_key)
 
     async def _store():
         async with client as c:
@@ -78,9 +87,12 @@ def memory_retrieve(
     limit: int = 5,
     *,
     wallet_address: str,
-    private_key: str,
+    private_key: Optional[str] = None,
     api_url: Optional[str] = None,
     chain: str = "base",
+    signer: Optional[Any] = None,
+    wallet_provider: Optional[Any] = None,
+    encryption_key: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Retrieve memories by semantic search.
@@ -97,7 +109,7 @@ def memory_retrieve(
     Returns:
         Dict with memories list
     """
-    client = create_xache_client(wallet_address, private_key, api_url, chain)
+    client = create_xache_client(wallet_address, private_key, api_url, chain, signer=signer, wallet_provider=wallet_provider, encryption_key=encryption_key)
 
     async def _retrieve():
         async with client as c:
@@ -132,9 +144,12 @@ def collective_contribute(
     tags: Optional[List[str]] = None,
     *,
     wallet_address: str,
-    private_key: str,
+    private_key: Optional[str] = None,
     api_url: Optional[str] = None,
     chain: str = "base",
+    signer: Optional[Any] = None,
+    wallet_provider: Optional[Any] = None,
+    encryption_key: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Contribute an insight to collective intelligence.
@@ -152,7 +167,7 @@ def collective_contribute(
     Returns:
         Dict with heuristicId and receiptId
     """
-    client = create_xache_client(wallet_address, private_key, api_url, chain)
+    client = create_xache_client(wallet_address, private_key, api_url, chain, signer=signer, wallet_provider=wallet_provider, encryption_key=encryption_key)
 
     async def _contribute():
         async with client as c:
@@ -179,9 +194,12 @@ def collective_query(
     limit: int = 5,
     *,
     wallet_address: str,
-    private_key: str,
+    private_key: Optional[str] = None,
     api_url: Optional[str] = None,
     chain: str = "base",
+    signer: Optional[Any] = None,
+    wallet_provider: Optional[Any] = None,
+    encryption_key: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Query collective intelligence for insights.
@@ -198,7 +216,7 @@ def collective_query(
     Returns:
         Dict with insights list
     """
-    client = create_xache_client(wallet_address, private_key, api_url, chain)
+    client = create_xache_client(wallet_address, private_key, api_url, chain, signer=signer, wallet_provider=wallet_provider, encryption_key=encryption_key)
 
     async def _query():
         async with client as c:
@@ -230,9 +248,12 @@ def check_reputation(
     agent_did: Optional[str] = None,
     *,
     wallet_address: str,
-    private_key: str,
+    private_key: Optional[str] = None,
     api_url: Optional[str] = None,
     chain: str = "base",
+    signer: Optional[Any] = None,
+    wallet_provider: Optional[Any] = None,
+    encryption_key: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Check reputation score.
@@ -247,7 +268,7 @@ def check_reputation(
     Returns:
         Dict with reputation info
     """
-    client = create_xache_client(wallet_address, private_key, api_url, chain)
+    client = create_xache_client(wallet_address, private_key, api_url, chain, signer=signer, wallet_provider=wallet_provider, encryption_key=encryption_key)
 
     async def _check():
         async with client as c:
@@ -291,12 +312,15 @@ def graph_extract(
     context_hint: str = "",
     *,
     wallet_address: str,
-    private_key: str,
+    private_key: Optional[str] = None,
     api_url: Optional[str] = None,
     chain: str = "base",
     llm_provider: str = "anthropic",
     llm_api_key: str = "",
     llm_model: str = "",
+    signer: Optional[Any] = None,
+    wallet_provider: Optional[Any] = None,
+    encryption_key: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Extract entities and relationships from text into the knowledge graph.
@@ -315,7 +339,7 @@ def graph_extract(
     Returns:
         Dict with entities and relationships
     """
-    client = create_xache_client(wallet_address, private_key, api_url, chain)
+    client = create_xache_client(wallet_address, private_key, api_url, chain, signer=signer, wallet_provider=wallet_provider, encryption_key=encryption_key)
 
     llm_config: Dict[str, Any] = {"type": "xache-managed", "provider": "anthropic", "model": llm_model or None}
     if llm_api_key and llm_provider:
@@ -344,9 +368,12 @@ def graph_query(
     depth: int = 2,
     *,
     wallet_address: str,
-    private_key: str,
+    private_key: Optional[str] = None,
     api_url: Optional[str] = None,
     chain: str = "base",
+    signer: Optional[Any] = None,
+    wallet_provider: Optional[Any] = None,
+    encryption_key: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Query the knowledge graph around a specific entity.
@@ -362,7 +389,7 @@ def graph_query(
     Returns:
         Dict with entities and relationships in the subgraph
     """
-    client = create_xache_client(wallet_address, private_key, api_url, chain)
+    client = create_xache_client(wallet_address, private_key, api_url, chain, signer=signer, wallet_provider=wallet_provider, encryption_key=encryption_key)
 
     async def _query():
         async with client as c:
@@ -385,12 +412,15 @@ def graph_ask(
     question: str,
     *,
     wallet_address: str,
-    private_key: str,
+    private_key: Optional[str] = None,
     api_url: Optional[str] = None,
     chain: str = "base",
     llm_provider: str = "anthropic",
     llm_api_key: str = "",
     llm_model: str = "",
+    signer: Optional[Any] = None,
+    wallet_provider: Optional[Any] = None,
+    encryption_key: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Ask a natural language question about the knowledge graph.
@@ -408,7 +438,7 @@ def graph_ask(
     Returns:
         Dict with answer, confidence, and sources
     """
-    client = create_xache_client(wallet_address, private_key, api_url, chain)
+    client = create_xache_client(wallet_address, private_key, api_url, chain, signer=signer, wallet_provider=wallet_provider, encryption_key=encryption_key)
 
     llm_config: Dict[str, Any] = {"type": "xache-managed", "provider": "anthropic", "model": llm_model or None}
     if llm_api_key and llm_provider:
@@ -434,9 +464,12 @@ def graph_add_entity(
     summary: str = "",
     *,
     wallet_address: str,
-    private_key: str,
+    private_key: Optional[str] = None,
     api_url: Optional[str] = None,
     chain: str = "base",
+    signer: Optional[Any] = None,
+    wallet_provider: Optional[Any] = None,
+    encryption_key: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Add an entity to the knowledge graph.
@@ -453,7 +486,7 @@ def graph_add_entity(
     Returns:
         Dict with entity details
     """
-    client = create_xache_client(wallet_address, private_key, api_url, chain)
+    client = create_xache_client(wallet_address, private_key, api_url, chain, signer=signer, wallet_provider=wallet_provider, encryption_key=encryption_key)
 
     async def _add():
         async with client as c:
@@ -477,9 +510,12 @@ def graph_add_relationship(
     description: str = "",
     *,
     wallet_address: str,
-    private_key: str,
+    private_key: Optional[str] = None,
     api_url: Optional[str] = None,
     chain: str = "base",
+    signer: Optional[Any] = None,
+    wallet_provider: Optional[Any] = None,
+    encryption_key: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Create a relationship between two entities.
@@ -497,7 +533,7 @@ def graph_add_relationship(
     Returns:
         Dict with relationship details
     """
-    client = create_xache_client(wallet_address, private_key, api_url, chain)
+    client = create_xache_client(wallet_address, private_key, api_url, chain, signer=signer, wallet_provider=wallet_provider, encryption_key=encryption_key)
 
     async def _add():
         async with client as c:
@@ -518,9 +554,12 @@ def graph_load(
     valid_at: Optional[str] = None,
     *,
     wallet_address: str,
-    private_key: str,
+    private_key: Optional[str] = None,
     api_url: Optional[str] = None,
     chain: str = "base",
+    signer: Optional[Any] = None,
+    wallet_provider: Optional[Any] = None,
+    encryption_key: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Load the full knowledge graph.
@@ -536,7 +575,7 @@ def graph_load(
     Returns:
         Dict with entities and relationships
     """
-    client = create_xache_client(wallet_address, private_key, api_url, chain)
+    client = create_xache_client(wallet_address, private_key, api_url, chain, signer=signer, wallet_provider=wallet_provider, encryption_key=encryption_key)
 
     async def _load():
         async with client as c:
@@ -560,9 +599,12 @@ def graph_merge_entities(
     target_name: str,
     *,
     wallet_address: str,
-    private_key: str,
+    private_key: Optional[str] = None,
     api_url: Optional[str] = None,
     chain: str = "base",
+    signer: Optional[Any] = None,
+    wallet_provider: Optional[Any] = None,
+    encryption_key: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Merge two entities into one. The source is superseded, the target is updated.
@@ -578,7 +620,7 @@ def graph_merge_entities(
     Returns:
         Dict with merged entity details
     """
-    client = create_xache_client(wallet_address, private_key, api_url, chain)
+    client = create_xache_client(wallet_address, private_key, api_url, chain, signer=signer, wallet_provider=wallet_provider, encryption_key=encryption_key)
 
     async def _merge():
         async with client as c:
@@ -599,9 +641,12 @@ def graph_entity_history(
     name: str,
     *,
     wallet_address: str,
-    private_key: str,
+    private_key: Optional[str] = None,
     api_url: Optional[str] = None,
     chain: str = "base",
+    signer: Optional[Any] = None,
+    wallet_provider: Optional[Any] = None,
+    encryption_key: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Get the version history of an entity.
@@ -616,7 +661,7 @@ def graph_entity_history(
     Returns:
         Dict with version history
     """
-    client = create_xache_client(wallet_address, private_key, api_url, chain)
+    client = create_xache_client(wallet_address, private_key, api_url, chain, signer=signer, wallet_provider=wallet_provider, encryption_key=encryption_key)
 
     async def _history():
         async with client as c:
@@ -648,12 +693,15 @@ def extract_memories(
     context_hint: str = "",
     *,
     wallet_address: str,
-    private_key: str,
+    private_key: Optional[str] = None,
     api_url: Optional[str] = None,
     chain: str = "base",
     llm_provider: str = "anthropic",
     llm_api_key: str = "",
     llm_model: str = "",
+    signer: Optional[Any] = None,
+    wallet_provider: Optional[Any] = None,
+    encryption_key: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Extract memories from conversation text using LLM-powered extraction.
@@ -673,7 +721,7 @@ def extract_memories(
     Returns:
         Dict with extracted memories
     """
-    client = create_xache_client(wallet_address, private_key, api_url, chain)
+    client = create_xache_client(wallet_address, private_key, api_url, chain, signer=signer, wallet_provider=wallet_provider, encryption_key=encryption_key)
 
     llm_config: Dict[str, Any] = {"type": "xache-managed", "provider": "anthropic", "model": llm_model or None}
     if llm_api_key and llm_provider:

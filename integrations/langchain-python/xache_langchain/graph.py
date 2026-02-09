@@ -143,7 +143,10 @@ class XacheGraphExtractTool(BaseTool):
 
     api_url: str = "https://api.xache.xyz"
     wallet_address: str
-    private_key: str
+    private_key: Optional[str] = None
+    signer: Optional[Any] = None
+    wallet_provider: Optional[Any] = None
+    encryption_key: Optional[str] = None
     chain: str = "base"
     llm_provider: str = "anthropic"
     llm_api_key: str = ""
@@ -164,6 +167,9 @@ class XacheGraphExtractTool(BaseTool):
             api_url=self.api_url,
             did=did,
             private_key=self.private_key,
+            signer=self.signer,
+            wallet_provider=self.wallet_provider,
+            encryption_key=self.encryption_key,
         )
 
     def _build_llm_config(self) -> Dict[str, Any]:
@@ -242,7 +248,10 @@ class XacheGraphQueryTool(BaseTool):
 
     api_url: str = "https://api.xache.xyz"
     wallet_address: str
-    private_key: str
+    private_key: Optional[str] = None
+    signer: Optional[Any] = None
+    wallet_provider: Optional[Any] = None
+    encryption_key: Optional[str] = None
     chain: str = "base"
 
     _client: Optional[XacheClient] = None
@@ -259,6 +268,9 @@ class XacheGraphQueryTool(BaseTool):
             api_url=self.api_url,
             did=did,
             private_key=self.private_key,
+            signer=self.signer,
+            wallet_provider=self.wallet_provider,
+            encryption_key=self.encryption_key,
         )
 
     def _run(self, start_entity: str, depth: int = 2) -> str:
@@ -332,7 +344,10 @@ class XacheGraphAskTool(BaseTool):
 
     api_url: str = "https://api.xache.xyz"
     wallet_address: str
-    private_key: str
+    private_key: Optional[str] = None
+    signer: Optional[Any] = None
+    wallet_provider: Optional[Any] = None
+    encryption_key: Optional[str] = None
     chain: str = "base"
     llm_provider: str = "anthropic"
     llm_api_key: str = ""
@@ -353,6 +368,9 @@ class XacheGraphAskTool(BaseTool):
             api_url=self.api_url,
             did=did,
             private_key=self.private_key,
+            signer=self.signer,
+            wallet_provider=self.wallet_provider,
+            encryption_key=self.encryption_key,
         )
 
     def _build_llm_config(self) -> Dict[str, Any]:
@@ -403,7 +421,10 @@ class XacheGraphAddEntityTool(BaseTool):
 
     api_url: str = "https://api.xache.xyz"
     wallet_address: str
-    private_key: str
+    private_key: Optional[str] = None
+    signer: Optional[Any] = None
+    wallet_provider: Optional[Any] = None
+    encryption_key: Optional[str] = None
     chain: str = "base"
 
     _client: Optional[XacheClient] = None
@@ -420,6 +441,9 @@ class XacheGraphAddEntityTool(BaseTool):
             api_url=self.api_url,
             did=did,
             private_key=self.private_key,
+            signer=self.signer,
+            wallet_provider=self.wallet_provider,
+            encryption_key=self.encryption_key,
         )
 
     def _run(
@@ -469,7 +493,10 @@ class XacheGraphAddRelationshipTool(BaseTool):
 
     api_url: str = "https://api.xache.xyz"
     wallet_address: str
-    private_key: str
+    private_key: Optional[str] = None
+    signer: Optional[Any] = None
+    wallet_provider: Optional[Any] = None
+    encryption_key: Optional[str] = None
     chain: str = "base"
 
     _client: Optional[XacheClient] = None
@@ -486,6 +513,9 @@ class XacheGraphAddRelationshipTool(BaseTool):
             api_url=self.api_url,
             did=did,
             private_key=self.private_key,
+            signer=self.signer,
+            wallet_provider=self.wallet_provider,
+            encryption_key=self.encryption_key,
         )
 
     def _run(
@@ -547,7 +577,10 @@ class XacheGraphLoadTool(BaseTool):
 
     api_url: str = "https://api.xache.xyz"
     wallet_address: str
-    private_key: str
+    private_key: Optional[str] = None
+    signer: Optional[Any] = None
+    wallet_provider: Optional[Any] = None
+    encryption_key: Optional[str] = None
     chain: str = "base"
 
     _client: Optional[XacheClient] = None
@@ -564,6 +597,9 @@ class XacheGraphLoadTool(BaseTool):
             api_url=self.api_url,
             did=did,
             private_key=self.private_key,
+            signer=self.signer,
+            wallet_provider=self.wallet_provider,
+            encryption_key=self.encryption_key,
         )
 
     def _run(
@@ -643,7 +679,10 @@ class XacheGraphMergeEntitiesTool(BaseTool):
 
     api_url: str = "https://api.xache.xyz"
     wallet_address: str
-    private_key: str
+    private_key: Optional[str] = None
+    signer: Optional[Any] = None
+    wallet_provider: Optional[Any] = None
+    encryption_key: Optional[str] = None
     chain: str = "base"
 
     _client: Optional[XacheClient] = None
@@ -660,6 +699,9 @@ class XacheGraphMergeEntitiesTool(BaseTool):
             api_url=self.api_url,
             did=did,
             private_key=self.private_key,
+            signer=self.signer,
+            wallet_provider=self.wallet_provider,
+            encryption_key=self.encryption_key,
         )
 
     def _run(self, source_name: str, target_name: str) -> str:
@@ -705,7 +747,10 @@ class XacheGraphEntityHistoryTool(BaseTool):
 
     api_url: str = "https://api.xache.xyz"
     wallet_address: str
-    private_key: str
+    private_key: Optional[str] = None
+    signer: Optional[Any] = None
+    wallet_provider: Optional[Any] = None
+    encryption_key: Optional[str] = None
     chain: str = "base"
 
     _client: Optional[XacheClient] = None
@@ -722,6 +767,9 @@ class XacheGraphEntityHistoryTool(BaseTool):
             api_url=self.api_url,
             did=did,
             private_key=self.private_key,
+            signer=self.signer,
+            wallet_provider=self.wallet_provider,
+            encryption_key=self.encryption_key,
         )
 
     def _run(self, name: str) -> str:
@@ -797,7 +845,10 @@ class XacheGraphRetriever(BaseRetriever):
     """
 
     wallet_address: str
-    private_key: str
+    private_key: Optional[str] = None
+    signer: Optional[Any] = None
+    wallet_provider: Optional[Any] = None
+    encryption_key: Optional[str] = None
     api_url: str = "https://api.xache.xyz"
     chain: str = "base"
     start_entity: Optional[str] = None
@@ -818,6 +869,9 @@ class XacheGraphRetriever(BaseRetriever):
             api_url=self.api_url,
             did=did,
             private_key=self.private_key,
+            signer=self.signer,
+            wallet_provider=self.wallet_provider,
+            encryption_key=self.encryption_key,
         )
 
     def _get_relevant_documents(

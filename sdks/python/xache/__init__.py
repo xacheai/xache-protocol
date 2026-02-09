@@ -147,6 +147,22 @@ from .utils.batch import batch_process, batch_process_with_concurrency, BatchIte
 from .utils.retry import RetryPolicy, with_retry
 from .utils.cache import CacheConfig, LRUCache
 
+# Signer Abstraction (for external wallet/signer integration)
+from .crypto.signer import (
+    XacheSigner,
+    XacheWalletProvider,
+    SigningAdapter,
+    PrivateKeySigningAdapter,
+    ExternalSignerAdapter,
+    WalletProviderAdapter,
+    ReadOnlySigningAdapter,
+    create_signing_adapter,
+)
+from .crypto.signer_helpers import (
+    create_signer_from_eth_account,
+    create_signer_from_solana_keypair,
+)
+
 # Wallet generation
 from .crypto.wallet import (
     WalletGenerator,
@@ -255,6 +271,17 @@ __all__ = [
     "with_retry",
     "CacheConfig",
     "LRUCache",
+    # Signer Abstraction
+    "XacheSigner",
+    "XacheWalletProvider",
+    "SigningAdapter",
+    "PrivateKeySigningAdapter",
+    "ExternalSignerAdapter",
+    "WalletProviderAdapter",
+    "ReadOnlySigningAdapter",
+    "create_signing_adapter",
+    "create_signer_from_eth_account",
+    "create_signer_from_solana_keypair",
     # Wallet generation
     "WalletGenerator",
     "WalletGenerationResult",

@@ -4,7 +4,7 @@ Agents with built-in Xache memory and collective intelligence capabilities
 """
 
 import os
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Any, Callable, Dict, List, Optional, Union, TYPE_CHECKING
 from functools import partial
 
 try:
@@ -48,13 +48,16 @@ class XacheMemoryAgent(ConversableAgent):
         self,
         name: str,
         wallet_address: str,
-        private_key: str,
+        private_key: Optional[str] = None,
         api_url: Optional[str] = None,
         chain: str = "base",
         system_message: Optional[str] = None,
         llm_config: Optional[Dict] = None,
         timeout: int = 30000,
         debug: bool = False,
+        signer: Optional[Any] = None,
+        wallet_provider: Optional[Any] = None,
+        encryption_key: Optional[str] = None,
         **kwargs
     ):
         # Build xache config with env-based default
@@ -66,6 +69,9 @@ class XacheMemoryAgent(ConversableAgent):
             "chain": chain,
             "timeout": timeout,
             "debug": debug,
+            "signer": signer,
+            "wallet_provider": wallet_provider,
+            "encryption_key": encryption_key,
         }
 
         # Create bound function map
@@ -115,6 +121,9 @@ class XacheMemoryAgent(ConversableAgent):
                 private_key=config["private_key"],
                 api_url=config["api_url"],
                 chain=config["chain"],
+                signer=config["signer"],
+                wallet_provider=config["wallet_provider"],
+                encryption_key=config["encryption_key"],
             ),
             "xache_memory_retrieve": partial(
                 memory_retrieve,
@@ -122,6 +131,9 @@ class XacheMemoryAgent(ConversableAgent):
                 private_key=config["private_key"],
                 api_url=config["api_url"],
                 chain=config["chain"],
+                signer=config["signer"],
+                wallet_provider=config["wallet_provider"],
+                encryption_key=config["encryption_key"],
             ),
             "xache_collective_contribute": partial(
                 collective_contribute,
@@ -129,6 +141,9 @@ class XacheMemoryAgent(ConversableAgent):
                 private_key=config["private_key"],
                 api_url=config["api_url"],
                 chain=config["chain"],
+                signer=config["signer"],
+                wallet_provider=config["wallet_provider"],
+                encryption_key=config["encryption_key"],
             ),
             "xache_collective_query": partial(
                 collective_query,
@@ -136,6 +151,9 @@ class XacheMemoryAgent(ConversableAgent):
                 private_key=config["private_key"],
                 api_url=config["api_url"],
                 chain=config["chain"],
+                signer=config["signer"],
+                wallet_provider=config["wallet_provider"],
+                encryption_key=config["encryption_key"],
             ),
             "xache_check_reputation": partial(
                 check_reputation,
@@ -143,6 +161,9 @@ class XacheMemoryAgent(ConversableAgent):
                 private_key=config["private_key"],
                 api_url=config["api_url"],
                 chain=config["chain"],
+                signer=config["signer"],
+                wallet_provider=config["wallet_provider"],
+                encryption_key=config["encryption_key"],
             ),
         }
 
@@ -190,13 +211,16 @@ class XacheAssistantAgent(AssistantAgent):
         self,
         name: str,
         wallet_address: str,
-        private_key: str,
+        private_key: Optional[str] = None,
         api_url: Optional[str] = None,
         chain: str = "base",
         system_message: Optional[str] = None,
         llm_config: Optional[Dict] = None,
         timeout: int = 30000,
         debug: bool = False,
+        signer: Optional[Any] = None,
+        wallet_provider: Optional[Any] = None,
+        encryption_key: Optional[str] = None,
         **kwargs
     ):
         # Build xache config with env-based default
@@ -208,6 +232,9 @@ class XacheAssistantAgent(AssistantAgent):
             "chain": chain,
             "timeout": timeout,
             "debug": debug,
+            "signer": signer,
+            "wallet_provider": wallet_provider,
+            "encryption_key": encryption_key,
         }
 
         # Create bound function map
@@ -261,6 +288,9 @@ class XacheAssistantAgent(AssistantAgent):
                 private_key=config["private_key"],
                 api_url=config["api_url"],
                 chain=config["chain"],
+                signer=config["signer"],
+                wallet_provider=config["wallet_provider"],
+                encryption_key=config["encryption_key"],
             ),
             "xache_memory_retrieve": partial(
                 memory_retrieve,
@@ -268,6 +298,9 @@ class XacheAssistantAgent(AssistantAgent):
                 private_key=config["private_key"],
                 api_url=config["api_url"],
                 chain=config["chain"],
+                signer=config["signer"],
+                wallet_provider=config["wallet_provider"],
+                encryption_key=config["encryption_key"],
             ),
             "xache_collective_contribute": partial(
                 collective_contribute,
@@ -275,6 +308,9 @@ class XacheAssistantAgent(AssistantAgent):
                 private_key=config["private_key"],
                 api_url=config["api_url"],
                 chain=config["chain"],
+                signer=config["signer"],
+                wallet_provider=config["wallet_provider"],
+                encryption_key=config["encryption_key"],
             ),
             "xache_collective_query": partial(
                 collective_query,
@@ -282,6 +318,9 @@ class XacheAssistantAgent(AssistantAgent):
                 private_key=config["private_key"],
                 api_url=config["api_url"],
                 chain=config["chain"],
+                signer=config["signer"],
+                wallet_provider=config["wallet_provider"],
+                encryption_key=config["encryption_key"],
             ),
             "xache_check_reputation": partial(
                 check_reputation,
@@ -289,6 +328,9 @@ class XacheAssistantAgent(AssistantAgent):
                 private_key=config["private_key"],
                 api_url=config["api_url"],
                 chain=config["chain"],
+                signer=config["signer"],
+                wallet_provider=config["wallet_provider"],
+                encryption_key=config["encryption_key"],
             ),
         }
 

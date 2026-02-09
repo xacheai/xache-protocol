@@ -54,7 +54,10 @@ class XacheRetriever(BaseRetriever):
         default_factory=lambda: os.environ.get("XACHE_API_URL", "https://api.xache.xyz")
     )
     wallet_address: str = Field(...)
-    private_key: str = Field(...)
+    private_key: Optional[str] = Field(default=None)
+    signer: Optional[Any] = Field(default=None)
+    wallet_provider: Optional[Any] = Field(default=None)
+    encryption_key: Optional[str] = Field(default=None)
     chain: str = Field(default="base")
 
     # Retrieval configuration
@@ -89,6 +92,9 @@ class XacheRetriever(BaseRetriever):
             api_url=self.api_url,
             did=did,
             private_key=self.private_key,
+            signer=self.signer,
+            wallet_provider=self.wallet_provider,
+            encryption_key=self.encryption_key,
         )
 
     def _get_relevant_documents(

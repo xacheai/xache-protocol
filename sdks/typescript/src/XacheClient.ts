@@ -16,7 +16,8 @@ import type {
   DID,
 } from './types';
 import { HttpClient } from './utils/http';
-import { generateAuthHeaders, validateDID, deriveEVMAddress, deriveSolanaAddress } from './crypto/signing';
+import { generateAuthHeadersAsync, validateDID, deriveEVMAddress, deriveSolanaAddress } from './crypto/signing';
+import { createSigningAdapter, type ISigningAdapter, ReadOnlySigningAdapter } from './crypto/SigningAdapter';
 import {
   deriveSubjectId as deriveSubjectIdCrypto,
   createSubjectContext as createSubjectContextUtil,
@@ -67,16 +68,18 @@ import { PaymentHandler } from './payment/PaymentHandler';
  * ```
  */
 export class XacheClient {
-  private readonly config: Required<Omit<XacheClientConfig, 'privateKey' | 'signer' | 'walletProvider' | 'paymentProvider' | 'retryPolicy' | 'cache' | 'autoContribute'>> & {
+  private readonly config: Required<Omit<XacheClientConfig, 'privateKey' | 'signer' | 'walletProvider' | 'encryptionKey' | 'paymentProvider' | 'retryPolicy' | 'cache' | 'autoContribute'>> & {
     privateKey?: string;
     signer?: import('./types').XacheSigner;
     walletProvider?: import('./types').XacheWalletProvider;
+    encryptionKey?: string;
     paymentProvider?: PaymentProviderConfig;
     retryPolicy?: RetryPolicy;
     cache?: CacheConfig;
     autoContribute?: AutoContributeConfig;
   };
   private readonly httpClient: HttpClient;
+  private readonly signingAdapter: ISigningAdapter;
   private readonly paymentHandler?: PaymentHandler;
 
   // Service instances
@@ -106,6 +109,7 @@ export class XacheClient {
       privateKey: config.privateKey,
       signer: config.signer,
       walletProvider: config.walletProvider,
+      encryptionKey: config.encryptionKey,
       timeout: config.timeout ?? 30000,
       debug: config.debug ?? false,
       retryPolicy: config.retryPolicy,
@@ -114,12 +118,21 @@ export class XacheClient {
       autoContribute: config.autoContribute,
     };
 
-    // Initialize HTTP client with privateKey for autopay (if provided)
-    this.httpClient = new HttpClient(this.config.timeout, undefined, this.config.debug, this.config.privateKey);
+    // Create signing adapter from config (privateKey > signer > walletProvider > ReadOnly)
+    this.signingAdapter = createSigningAdapter({
+      privateKey: config.privateKey,
+      signer: config.signer,
+      walletProvider: config.walletProvider,
+      did: config.did,
+      encryptionKey: config.encryptionKey,
+    });
 
-    // Initialize payment handler only if privateKey provided
-    if (this.config.privateKey) {
-      this.paymentHandler = new PaymentHandler(this.config.privateKey, this.config.debug);
+    // Initialize HTTP client with signing adapter for autopay
+    this.httpClient = new HttpClient(this.config.timeout, undefined, this.config.debug, this.signingAdapter);
+
+    // Initialize payment handler if we have signing capability
+    if (!(this.signingAdapter instanceof ReadOnlySigningAdapter)) {
+      this.paymentHandler = new PaymentHandler(this.signingAdapter, this.config.debug);
     }
 
     // Initialize services
@@ -212,7 +225,15 @@ export class XacheClient {
    * Check if client is configured for write operations (has privateKey)
    */
   isReadOnly(): boolean {
-    return !this.config.privateKey;
+    return !this.config.privateKey && !this.config.signer && !this.config.walletProvider;
+  }
+
+  /**
+   * Get the signing adapter (for internal use by services)
+   * @internal
+   */
+  getSigningAdapter(): ISigningAdapter {
+    return this.signingAdapter;
   }
 
   /**
@@ -237,20 +258,20 @@ export class XacheClient {
 
     // Add authentication headers (unless skipped)
     if (!options?.skipAuth) {
-      if (!this.config.privateKey) {
+      if (this.signingAdapter instanceof ReadOnlySigningAdapter) {
         throw new Error(
-          `privateKey is required for authenticated requests. ` +
+          `privateKey, signer, or walletProvider is required for authenticated requests. ` +
           `This client is read-only. To make authenticated requests, ` +
-          `create a new XacheClient with a privateKey.`
+          `create a new XacheClient with a privateKey, signer, or walletProvider.`
         );
       }
       try {
-        const authHeaders = generateAuthHeaders(
+        const authHeaders = await generateAuthHeadersAsync(
           method,
           path,
           bodyStr,
           this.config.did,
-          this.config.privateKey
+          this.signingAdapter
         );
         Object.assign(headers, authHeaders);
       } catch (error) {
@@ -311,10 +332,11 @@ export class XacheClient {
   /**
    * Get client configuration (read-only)
    */
-  getConfig(): Readonly<Required<Omit<XacheClientConfig, 'privateKey' | 'signer' | 'walletProvider' | 'paymentProvider' | 'retryPolicy' | 'cache' | 'autoContribute'>> & {
+  getConfig(): Readonly<Required<Omit<XacheClientConfig, 'privateKey' | 'signer' | 'walletProvider' | 'encryptionKey' | 'paymentProvider' | 'retryPolicy' | 'cache' | 'autoContribute'>> & {
     privateKey?: string;
     signer?: import('./types').XacheSigner;
     walletProvider?: import('./types').XacheWalletProvider;
+    encryptionKey?: string;
     paymentProvider?: PaymentProviderConfig;
     retryPolicy?: RetryPolicy;
     cache?: CacheConfig;

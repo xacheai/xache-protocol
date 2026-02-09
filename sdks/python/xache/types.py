@@ -65,7 +65,10 @@ class XacheClientConfig:
     """Client configuration"""
     api_url: str
     did: DID
-    private_key: str
+    private_key: Optional[str] = None
+    signer: Optional[Any] = None  # XacheSigner protocol instance
+    wallet_provider: Optional[Any] = None  # XacheWalletProvider protocol instance
+    encryption_key: Optional[str] = None  # Explicit encryption key override
     payment_provider: Optional[Dict[str, Any]] = None
     timeout: int = 30
     debug: bool = False

@@ -10,7 +10,7 @@ For multi-tenant applications, pass configuration explicitly to avoid credential
 import os
 import threading
 import warnings
-from typing import Optional
+from typing import Any, Optional
 from dataclasses import dataclass, field
 
 
@@ -26,6 +26,9 @@ class XacheConfig:
     """
     wallet_address: str = ""
     private_key: str = ""
+    signer: Optional[Any] = None
+    wallet_provider: Optional[Any] = None
+    encryption_key: Optional[str] = None
     api_url: str = field(default_factory=lambda: os.environ.get("XACHE_API_URL", "https://api.xache.xyz"))
     chain: str = field(default_factory=lambda: os.environ.get("XACHE_CHAIN", "base"))
     network: str = field(default_factory=lambda: os.environ.get("XACHE_NETWORK", "base-sepolia"))
@@ -38,6 +41,10 @@ class XacheConfig:
             self.wallet_address = os.environ.get("XACHE_WALLET_ADDRESS", "")
         if not self.private_key:
             self.private_key = os.environ.get("XACHE_PRIVATE_KEY", "")
+        if self.encryption_key is None:
+            env_enc_key = os.environ.get("XACHE_ENCRYPTION_KEY", "")
+            if env_enc_key:
+                self.encryption_key = env_enc_key
 
     @property
     def did(self) -> str:
@@ -49,7 +56,8 @@ class XacheConfig:
 
     def is_valid(self) -> bool:
         """Check if config has required fields"""
-        return bool(self.wallet_address and self.private_key)
+        has_auth = bool(self.private_key) or self.signer is not None or self.wallet_provider is not None
+        return bool(self.wallet_address) and has_auth
 
 
 # Global config instance with thread lock
@@ -83,6 +91,9 @@ def get_config() -> XacheConfig:
 def set_config(
     wallet_address: Optional[str] = None,
     private_key: Optional[str] = None,
+    signer: Optional[Any] = None,
+    wallet_provider: Optional[Any] = None,
+    encryption_key: Optional[str] = None,
     api_url: Optional[str] = None,
     chain: Optional[str] = None,
     network: Optional[str] = None,
@@ -95,6 +106,9 @@ def set_config(
     Args:
         wallet_address: Wallet address for authentication
         private_key: Private key for signing
+        signer: Optional signer abstraction (alternative to private_key)
+        wallet_provider: Optional wallet provider (alternative to private_key)
+        encryption_key: Optional encryption key for client-side encryption
         api_url: Xache API URL
         chain: Chain type ('base' or 'solana')
         network: Network name ('base-sepolia', 'base-mainnet', 'solana-devnet')
@@ -108,11 +122,25 @@ def set_config(
         ```python
         from xache_openclaw import set_config
 
+        # Classic usage with private key
         set_config(
             wallet_address="0x...",
             private_key="0x...",
             chain="base",
             network="base-sepolia"
+        )
+
+        # Using a signer abstraction
+        set_config(
+            wallet_address="0x...",
+            signer=my_signer,
+        )
+
+        # Using a wallet provider
+        set_config(
+            wallet_address="0x...",
+            wallet_provider=my_wallet,
+            encryption_key="0x...",
         )
         ```
 
@@ -139,6 +167,9 @@ def set_config(
         _config = XacheConfig(
             wallet_address=wallet_address if wallet_address is not None else current.wallet_address,
             private_key=private_key if private_key is not None else current.private_key,
+            signer=signer if signer is not None else current.signer,
+            wallet_provider=wallet_provider if wallet_provider is not None else current.wallet_provider,
+            encryption_key=encryption_key if encryption_key is not None else current.encryption_key,
             api_url=api_url if api_url is not None else current.api_url,
             chain=chain if chain is not None else current.chain,
             network=network if network is not None else current.network,

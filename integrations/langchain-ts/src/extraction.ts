@@ -3,7 +3,7 @@
  * Auto-extract memories from conversations
  */
 
-import { XacheClient, DID } from '@xache/sdk';
+import { XacheClient, DID, type XacheSigner, type XacheWalletProvider } from '@xache/sdk';
 import type { ExtractMemoriesResponse, LLMProvider, LLMApiFormat } from '@xache/sdk';
 
 export interface ExtractedMemory {
@@ -33,8 +33,14 @@ export interface ExtractionResult {
 export interface XacheExtractorConfig {
   /** Wallet address for authentication */
   walletAddress: string;
-  /** Private key for signing */
-  privateKey: string;
+  /** Private key for signing (optional if signer or walletProvider is provided) */
+  privateKey?: string;
+  /** External signer (alternative to privateKey) */
+  signer?: XacheSigner;
+  /** Wallet provider for lazy signer resolution */
+  walletProvider?: XacheWalletProvider;
+  /** Encryption key for use with external signers */
+  encryptionKey?: string;
   /**
    * Extraction mode:
    * - 'xache-managed': Xache provides the LLM ($0.011)
@@ -120,6 +126,9 @@ export class XacheExtractor {
       apiUrl: config.apiUrl || 'https://api.xache.xyz',
       did,
       privateKey: config.privateKey,
+      signer: config.signer,
+      walletProvider: config.walletProvider,
+      encryptionKey: config.encryptionKey,
       timeout: config.timeout,
       debug: config.debug,
     });

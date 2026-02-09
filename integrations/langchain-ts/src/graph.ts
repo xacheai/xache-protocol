@@ -14,6 +14,8 @@ import {
   type LLMProvider,
   type LLMApiFormat,
   type SubjectContext,
+  type XacheSigner,
+  type XacheWalletProvider,
 } from '@xache/sdk';
 
 // =============================================================================
@@ -23,8 +25,14 @@ import {
 export interface GraphToolConfig {
   /** Wallet address for authentication */
   walletAddress: string;
-  /** Private key for signing */
-  privateKey: string;
+  /** Private key for signing (optional if signer or walletProvider is provided) */
+  privateKey?: string;
+  /** External signer (alternative to privateKey) */
+  signer?: XacheSigner;
+  /** Wallet provider for lazy signer resolution */
+  walletProvider?: XacheWalletProvider;
+  /** Encryption key for use with external signers */
+  encryptionKey?: string;
   /** API URL (defaults to https://api.xache.xyz) */
   apiUrl?: string;
   /** Chain: 'base' or 'solana' */
@@ -53,6 +61,9 @@ function createClient(config: GraphToolConfig): XacheClient {
     apiUrl: config.apiUrl || 'https://api.xache.xyz',
     did,
     privateKey: config.privateKey,
+    signer: config.signer,
+    walletProvider: config.walletProvider,
+    encryptionKey: config.encryptionKey,
   });
 }
 
@@ -494,8 +505,14 @@ export class XacheGraphEntityHistoryTool {
 export interface XacheGraphRetrieverConfig extends BaseRetrieverInput {
   /** Wallet address for authentication */
   walletAddress: string;
-  /** Private key for signing */
-  privateKey: string;
+  /** Private key for signing (optional if signer or walletProvider is provided) */
+  privateKey?: string;
+  /** External signer (alternative to privateKey) */
+  signer?: XacheSigner;
+  /** Wallet provider for lazy signer resolution */
+  walletProvider?: XacheWalletProvider;
+  /** Encryption key for use with external signers */
+  encryptionKey?: string;
   /** API URL (defaults to https://api.xache.xyz) */
   apiUrl?: string;
   /** Chain: 'base' or 'solana' */
@@ -548,6 +565,9 @@ export class XacheGraphRetriever extends BaseRetriever {
       apiUrl: config.apiUrl || 'https://api.xache.xyz',
       did,
       privateKey: config.privateKey,
+      signer: config.signer,
+      walletProvider: config.walletProvider,
+      encryptionKey: config.encryptionKey,
     });
 
     this.subject = config.subject || { scope: 'GLOBAL' };

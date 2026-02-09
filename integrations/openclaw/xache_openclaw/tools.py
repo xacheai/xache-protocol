@@ -39,19 +39,31 @@ def create_xache_client(config: Optional[XacheConfig] = None) -> XacheClient:
     if not cfg.is_valid():
         raise ValueError(
             "Xache not configured. Set XACHE_WALLET_ADDRESS and XACHE_PRIVATE_KEY "
-            "environment variables, or call set_config() first."
+            "environment variables, provide a signer/wallet_provider, "
+            "or call set_config() first."
         )
 
-    cache_key = f"{cfg.wallet_address}:{cfg.api_url}:{cfg.chain}"
+    # Include signer/provider identity in cache key to avoid stale clients
+    signer_id = id(cfg.signer) if cfg.signer is not None else "none"
+    provider_id = id(cfg.wallet_provider) if cfg.wallet_provider is not None else "none"
+    cache_key = f"{cfg.wallet_address}:{cfg.api_url}:{cfg.chain}:{signer_id}:{provider_id}"
 
     if cache_key not in _client_cache:
-        _client_cache[cache_key] = XacheClient(
-            api_url=cfg.api_url,
-            did=cfg.did,
-            private_key=cfg.private_key,
-            timeout=cfg.timeout,
-            debug=cfg.debug,
-        )
+        client_kwargs: Dict[str, Any] = {
+            "api_url": cfg.api_url,
+            "did": cfg.did,
+            "private_key": cfg.private_key,
+            "timeout": cfg.timeout,
+            "debug": cfg.debug,
+        }
+        if cfg.signer is not None:
+            client_kwargs["signer"] = cfg.signer
+        if cfg.wallet_provider is not None:
+            client_kwargs["wallet_provider"] = cfg.wallet_provider
+        if cfg.encryption_key is not None:
+            client_kwargs["encryption_key"] = cfg.encryption_key
+
+        _client_cache[cache_key] = XacheClient(**client_kwargs)
 
     return _client_cache[cache_key]
 
@@ -961,6 +973,9 @@ class XacheGraphEntityHistoryTool:
 def xache_tools(
     wallet_address: Optional[str] = None,
     private_key: Optional[str] = None,
+    signer: Optional[Any] = None,
+    wallet_provider: Optional[Any] = None,
+    encryption_key: Optional[str] = None,
     include_memory: bool = False,  # Off by default - OpenClaw has local memory
     include_collective: bool = True,
     include_reputation: bool = True,
@@ -985,6 +1000,9 @@ def xache_tools(
     Args:
         wallet_address: Wallet address (uses env var if not provided)
         private_key: Private key (uses env var if not provided)
+        signer: Optional signer abstraction (alternative to private_key)
+        wallet_provider: Optional wallet provider (alternative to private_key)
+        encryption_key: Optional encryption key for client-side encryption
         include_memory: Include memory store/retrieve tools (default: False)
         include_collective: Include collective tools (default: True)
         include_reputation: Include reputation tool (default: True)
@@ -1009,7 +1027,13 @@ def xache_tools(
             private_key="0x..."
         )
 
-        # Option 3: With extraction (requires LLM)
+        # Option 3: With a signer abstraction
+        tools = xache_tools(
+            wallet_address="0x...",
+            signer=my_signer,
+        )
+
+        # Option 4: With extraction (requires LLM)
         tools = xache_tools(
             wallet_address="0x...",
             private_key="0x...",
@@ -1021,10 +1045,13 @@ def xache_tools(
     from .config import set_config as _set_config
 
     # Update config if credentials provided
-    if wallet_address or private_key:
+    if wallet_address or private_key or signer or wallet_provider or encryption_key:
         _set_config(
             wallet_address=wallet_address,
             private_key=private_key,
+            signer=signer,
+            wallet_provider=wallet_provider,
+            encryption_key=encryption_key,
         )
 
     tools = []

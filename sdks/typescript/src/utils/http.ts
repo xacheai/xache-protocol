@@ -5,6 +5,8 @@
 import type { APIResponse, Payment402Response } from '../types';
 import { createErrorFromResponse, PaymentRequiredError, NetworkError } from '../errors/XacheError';
 import { PaymentHandler, type PaymentChallenge, type PaymentResult } from '../payment/PaymentHandler';
+import type { ISigningAdapter } from '../crypto/SigningAdapter';
+import { ReadOnlySigningAdapter } from '../crypto/SigningAdapter';
 
 /**
  * HTTP request options
@@ -54,15 +56,15 @@ export class HttpClient {
     timeout: number = 30000,
     retryConfig?: Partial<RetryConfig>,
     debug: boolean = false,
-    privateKey?: string
+    signingAdapter?: ISigningAdapter
   ) {
     this.timeout = timeout;
     this.retryConfig = { ...DEFAULT_RETRY_CONFIG, ...retryConfig };
     this.debug = debug;
 
-    // Initialize payment handler if private key provided
-    if (privateKey) {
-      this.paymentHandler = new PaymentHandler(privateKey, debug);
+    // Initialize payment handler if signing adapter has signing capability
+    if (signingAdapter && !(signingAdapter instanceof ReadOnlySigningAdapter)) {
+      this.paymentHandler = new PaymentHandler(signingAdapter, debug);
     }
   }
 

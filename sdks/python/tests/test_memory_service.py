@@ -29,6 +29,13 @@ def make_mock_client(did="did:agent:evm:0xABC", private_key="0xdeadbeef"):
     client.private_key = private_key
     client.request = AsyncMock()
     client.request_with_payment = AsyncMock()
+
+    # Mock signing_adapter for _derive_encryption_key() which is now async
+    adapter = MagicMock()
+    adapter.get_encryption_seed = AsyncMock(return_value=private_key)
+    adapter.has_private_key = MagicMock(return_value=True)
+    client.signing_adapter = adapter
+
     return client
 
 
@@ -64,9 +71,10 @@ class TestStoreValidation:
 # ============================================================
 
 class TestEncryption:
-    def test_encrypt_decrypt_roundtrip(self):
+    @pytest.mark.asyncio
+    async def test_encrypt_decrypt_roundtrip(self):
         service = MemoryService(make_mock_client())
-        key = service._derive_encryption_key()
+        key = await service._derive_encryption_key()
 
         original = {"name": "Alice", "score": 42, "nested": {"a": True}}
         encrypted = service._encrypt_data(original, key)
@@ -79,12 +87,13 @@ class TestEncryption:
         decrypted = service._decrypt_data(encrypted, key)
         assert decrypted == original
 
-    def test_different_keys_produce_different_ciphertext(self):
+    @pytest.mark.asyncio
+    async def test_different_keys_produce_different_ciphertext(self):
         service1 = MemoryService(make_mock_client(did="did:agent:evm:0x111", private_key="0xkey1"))
         service2 = MemoryService(make_mock_client(did="did:agent:evm:0x222", private_key="0xkey2"))
 
-        key1 = service1._derive_encryption_key()
-        key2 = service2._derive_encryption_key()
+        key1 = await service1._derive_encryption_key()
+        key2 = await service2._derive_encryption_key()
 
         data = {"test": "data"}
         enc1 = service1._encrypt_data(data, key1)
@@ -93,12 +102,13 @@ class TestEncryption:
         # Different keys = different ciphertext
         assert enc1 != enc2
 
-    def test_wrong_key_fails_to_decrypt(self):
+    @pytest.mark.asyncio
+    async def test_wrong_key_fails_to_decrypt(self):
         service1 = MemoryService(make_mock_client(did="did:agent:evm:0x111", private_key="0xkey1"))
         service2 = MemoryService(make_mock_client(did="did:agent:evm:0x222", private_key="0xkey2"))
 
-        key1 = service1._derive_encryption_key()
-        key2 = service2._derive_encryption_key()
+        key1 = await service1._derive_encryption_key()
+        key2 = await service2._derive_encryption_key()
 
         data = {"secret": "message"}
         encrypted = service1._encrypt_data(data, key1)
@@ -106,9 +116,10 @@ class TestEncryption:
         with pytest.raises(Exception):
             service2._decrypt_data(encrypted, key2)
 
-    def test_key_is_32_bytes(self):
+    @pytest.mark.asyncio
+    async def test_key_is_32_bytes(self):
         service = MemoryService(make_mock_client())
-        key = service._derive_encryption_key()
+        key = await service._derive_encryption_key()
         assert len(key) == nacl.secret.SecretBox.KEY_SIZE  # 32
 
     def test_set_custom_encryption_key(self):
@@ -228,7 +239,7 @@ class TestRetrieve:
     async def test_retrieve_decrypts_data(self):
         client = make_mock_client()
         service = MemoryService(client)
-        key = service._derive_encryption_key()
+        key = await service._derive_encryption_key()
 
         original_data = {"secret": "message", "count": 7}
         encrypted = service._encrypt_data(original_data, key)
@@ -462,7 +473,7 @@ class TestBatchRetrieve:
     async def test_batch_retrieve_decrypts_all(self):
         client = make_mock_client()
         service = MemoryService(client)
-        key = service._derive_encryption_key()
+        key = await service._derive_encryption_key()
 
         data1 = {"name": "Alice"}
         data2 = {"name": "Bob"}
@@ -491,7 +502,7 @@ class TestBatchRetrieve:
     async def test_batch_retrieve_handles_partial_failure(self):
         client = make_mock_client()
         service = MemoryService(client)
-        key = service._derive_encryption_key()
+        key = await service._derive_encryption_key()
 
         client.request_with_payment.return_value = APIResponse(
             success=True,

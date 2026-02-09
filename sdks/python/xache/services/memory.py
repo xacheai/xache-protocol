@@ -451,15 +451,35 @@ class MemoryService:
     async def _get_encryption_key(self) -> bytes:
         """Get or derive encryption key"""
         if self._encryption_key is None:
-            self._encryption_key = self._derive_encryption_key()
+            self._encryption_key = await self._derive_encryption_key()
         return self._encryption_key
 
-    def _derive_encryption_key(self) -> bytes:
+    async def _derive_encryption_key(self) -> bytes:
         """
-        Derive encryption key from client configuration using PyNaCl
-        Uses BLAKE2b hash function for deterministic key derivation
+        Derive encryption key from signing adapter using PyNaCl.
+        Uses BLAKE2b hash function for deterministic key derivation.
+        Routes through signing adapter to support privateKey, signer, and walletProvider modes.
         """
-        key_material = self.client.private_key + self.client.did
+        adapter = self.client.signing_adapter
+
+        # Get encryption seed from adapter:
+        # - PrivateKey mode: returns private_key (identical to existing behavior)
+        # - External signer with encryption_key: returns encryption_key
+        # - External signer fallback: returns wallet address
+        seed = await adapter.get_encryption_seed()
+
+        # Warn if using address-derived fallback
+        if not adapter.has_private_key():
+            import warnings
+            warnings.warn(
+                "[Xache] Using external signer without encryption_key config. "
+                "Encryption key will be derived from wallet address, NOT a private key. "
+                "Existing encrypted memories from private_key mode will NOT be decryptable. "
+                "To maintain compatibility, pass encryption_key to XacheClient.",
+                stacklevel=2,
+            )
+
+        key_material = (seed or '') + self.client.did
         key_material_bytes = key_material.encode('utf-8')
 
         # Use BLAKE2b for deterministic key derivation (32 bytes for SecretBox)
@@ -524,3 +544,111 @@ class MemoryService:
         Get current encryption key (for backup purposes)
         """
         return await self._get_encryption_key()
+
+    # ========== Memory Management (Restore / Purge / List Deleted) ==========
+
+    async def restore(self, storage_key: str) -> Dict[str, Any]:
+        """
+        Restore a soft-deleted memory (clears deleted_at)
+        Free (no payment required)
+
+        Args:
+            storage_key: The storage key of the deleted memory
+
+        Returns:
+            Dict with storageKey and restored status
+
+        Example:
+            ```python
+            result = await client.memory.restore("mem_abc123_xyz")
+            print(f"Restored: {result['restored']}")
+            ```
+        """
+        if not storage_key:
+            raise ValueError("storage_key is required")
+
+        response = await self.client.request(
+            "POST", f"/v1/memory/{storage_key}/restore"
+        )
+
+        if not response.success or not response.data:
+            raise Exception("Memory restore failed")
+
+        result: Dict[str, Any] = response.data
+        return result
+
+    async def purge(self, storage_key: str) -> Dict[str, Any]:
+        """
+        Permanently purge a memory (hard delete R2 blob + DB row)
+        Receipts are preserved for audit trail. This is irreversible.
+        Free (no payment required)
+
+        Args:
+            storage_key: The storage key of the memory to purge
+
+        Returns:
+            Dict with storageKey, purged, and r2Deleted status
+
+        Example:
+            ```python
+            result = await client.memory.purge("mem_abc123_xyz")
+            print(f"Purged: {result['purged']}, R2 deleted: {result['r2Deleted']}")
+            ```
+        """
+        if not storage_key:
+            raise ValueError("storage_key is required")
+
+        response = await self.client.request(
+            "DELETE", f"/v1/memory/{storage_key}/purge"
+        )
+
+        if not response.success or not response.data:
+            raise Exception("Memory purge failed")
+
+        result: Dict[str, Any] = response.data
+        return result
+
+    async def list_deleted(
+        self,
+        agent_did: Optional[str] = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> Dict[str, Any]:
+        """
+        List soft-deleted memories for recovery
+        Free (no payment required)
+
+        Args:
+            agent_did: Agent DID (required for owner access)
+            limit: Max results (default 50, max 100)
+            offset: Pagination offset
+
+        Returns:
+            Dict with memories list, total, limit, offset
+
+        Example:
+            ```python
+            result = await client.memory.list_deleted(limit=20)
+            print(f"Deleted memories: {result['total']}")
+            for m in result['memories']:
+                print(f"  {m['storageKey']} deleted at {m['deletedAt']}")
+            ```
+        """
+        params = []
+        if agent_did:
+            params.append(f"agentDID={agent_did}")
+        if limit != 50:
+            params.append(f"limit={limit}")
+        if offset:
+            params.append(f"offset={offset}")
+
+        query = "&".join(params)
+        url = f"/v1/memory/deleted{'?' + query if query else ''}"
+
+        response = await self.client.request("GET", url)
+
+        if not response.success or not response.data:
+            raise Exception("List deleted memories failed")
+
+        result: Dict[str, Any] = response.data
+        return result
