@@ -1,11 +1,12 @@
 # Xache Protocol
 
-Official SDKs, MCP server, and framework integrations for [Xache](https://xache.xyz) - verifiable memory, collective intelligence, knowledge graphs, and reputation for AI agents.
+Official SDKs, MCP server, and framework integrations for [Xache](https://xache.xyz) - verifiable memory, ephemeral context, collective intelligence, knowledge graphs, and reputation for AI agents.
 
 ## What is Xache?
 
 Xache provides infrastructure for AI agents to:
 - **Store & retrieve memories** with cryptographic receipts
+- **Use ephemeral working memory** - session-scoped scratch space with 6 named slots, auto-expiry, and promotion to persistent memory
 - **Build knowledge graphs** - extract entities and relationships, query with natural language
 - **Contribute to collective intelligence** and earn reputation
 - **Extract learnings** from conversations using LLM (10+ providers, BYO key or managed)
@@ -18,14 +19,14 @@ Xache provides infrastructure for AI agents to:
 
 | Package | Language | Version | Install |
 |---------|----------|---------|---------|
-| [@xache/sdk](./sdks/typescript) | TypeScript | 5.6.0 | `npm install @xache/sdk` |
-| [xache](./sdks/python) | Python | 5.6.0 | `pip install xache` |
+| [@xache/sdk](./sdks/typescript) | TypeScript | 5.9.0 | `npm install @xache/sdk` |
+| [xache](./sdks/python) | Python | 5.9.0 | `pip install xache` |
 
 ### MCP Server
 
 | Package | Version | Install |
 |---------|---------|---------|
-| [@xache/mcp-server](./mcp) | 0.5.0 | `npm install -g @xache/mcp-server` |
+| [@xache/mcp-server](./mcp) | 0.7.0 | `npm install -g @xache/mcp-server` |
 
 Works with Claude Desktop, Claude Code, Cursor, OpenClaw, and any MCP-compatible client.
 
@@ -33,11 +34,11 @@ Works with Claude Desktop, Claude Code, Cursor, OpenClaw, and any MCP-compatible
 
 | Package | Framework | Version | Install |
 |---------|-----------|---------|---------|
-| [@xache/langchain](./integrations/langchain-ts) | LangChain.js | 0.4.0 | `npm install @xache/langchain` |
-| [langchain-xache](./integrations/langchain-python) | LangChain Python | 0.4.0 | `pip install langchain-xache` |
-| [crewai-xache](./integrations/crewai) | CrewAI | 0.2.0 | `pip install crewai-xache` |
-| [autogen-xache](./integrations/autogen) | AutoGen | 0.2.0 | `pip install autogen-xache` |
-| [openclaw-xache](./integrations/openclaw) | OpenClaw | 0.2.0 | `pip install openclaw-xache` |
+| [@xache/langchain](./integrations/langchain-ts) | LangChain.js | 0.6.0 | `npm install @xache/langchain` |
+| [langchain-xache](./integrations/langchain-python) | LangChain Python | 0.6.0 | `pip install langchain-xache` |
+| [crewai-xache](./integrations/crewai) | CrewAI | 0.4.0 | `pip install crewai-xache` |
+| [autogen-xache](./integrations/autogen) | AutoGen | 0.4.0 | `pip install autogen-xache` |
+| [openclaw-xache](./integrations/openclaw) | OpenClaw | 0.4.0 | `pip install openclaw-xache` |
 
 ## Quick Start
 
@@ -77,6 +78,24 @@ const answer = await client.graph.ask({
 });
 
 console.log('Answer:', answer.answer);
+
+// Ephemeral working memory (session-scoped scratch space)
+const session = await client.ephemeral.createSession({
+  ttlSeconds: 3600,
+  maxWindows: 5,
+});
+
+await client.ephemeral.writeSlot(session.sessionKey, 'facts', {
+  userName: 'Alice',
+  topic: 'ML pipeline optimization',
+});
+
+const facts = await client.ephemeral.readSlot(session.sessionKey, 'facts');
+console.log('Session facts:', facts);
+
+// Promote to persistent memory when done
+const promoted = await client.ephemeral.promoteSession(session.sessionKey);
+console.log('Memories created:', promoted.memoriesCreated);
 ```
 
 ### Python
@@ -115,6 +134,24 @@ async with XacheClient(
     )
 
     print(f"Answer: {answer.answer}")
+
+    # Ephemeral working memory (session-scoped scratch space)
+    session = await client.ephemeral.create_session(
+        ttl_seconds=3600,
+        max_windows=5,
+    )
+
+    await client.ephemeral.write_slot(session.session_key, "facts", {
+        "userName": "Alice",
+        "topic": "ML pipeline optimization",
+    })
+
+    facts = await client.ephemeral.read_slot(session.session_key, "facts")
+    print(f"Session facts: {facts}")
+
+    # Promote to persistent memory when done
+    promoted = await client.ephemeral.promote_session(session.session_key)
+    print(f"Memories created: {promoted.memories_created}")
 ```
 
 ### MCP Server (Claude Desktop / Cursor)
@@ -136,7 +173,7 @@ Add to your Claude Desktop config (`claude_desktop_config.json`):
 }
 ```
 
-This gives your AI assistant 18 tools: memory (store/retrieve/list), collective intelligence (contribute/query/list), knowledge graph (extract/load/query/ask/add entity/add relationship/merge/history), extraction, and reputation.
+This gives your AI assistant 23 tools: memory (store/retrieve/list), ephemeral context (create session/write slot/read slot/promote/status), collective intelligence (contribute/query/list), knowledge graph (extract/load/query/ask/add entity/add relationship/merge/history), extraction, and reputation.
 
 ## Features
 
@@ -145,6 +182,14 @@ This gives your AI assistant 18 tools: memory (store/retrieve/list), collective 
 - Cryptographic receipts with Merkle proofs
 - Subject-based access control and multi-tenancy
 - Batch operations
+
+### Ephemeral Context
+- Session-scoped working memory with automatic expiry
+- 6 named slots: `conversation`, `facts`, `tasks`, `cache`, `scratch`, `handoff`
+- Configurable TTL (default 1 hour) and renewal windows (up to 5)
+- Promote sessions to persistent memory when conversation ends
+- Structured entity/relationship extraction from session data
+- Export sessions as JSON, Markdown, or audit format
 
 ### Knowledge Graph
 - Extract entities and relationships from text using LLM
@@ -179,6 +224,10 @@ Xache uses the [x402 protocol](https://x402.org) for pay-per-use micropayments. 
 |-----------|-------|
 | Memory Store | $0.002 |
 | Memory Retrieve | $0.003 |
+| Ephemeral Create Session | $0.005 |
+| Ephemeral Renew Session | $0.005 |
+| Ephemeral Promote to Memory | $0.050 |
+| Ephemeral Slot Read/Write | Free (covered by session fee) |
 | Collective Contribute | $0.002 |
 | Collective Query | $0.011 |
 | Graph Operations | $0.002 |
