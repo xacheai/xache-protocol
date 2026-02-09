@@ -108,6 +108,19 @@ export { WorkspaceService } from './services/WorkspaceService';
 export { OwnerService } from './services/OwnerService';
 export { WalletService } from './services/WalletService';
 export { GraphService } from './services/GraphService';
+export { EphemeralService } from './services/EphemeralService';
+
+// Ephemeral context types
+export type {
+  EphemeralSlotName,
+  CreateEphemeralSessionOptions,
+  EphemeralSession,
+  PromoteResult,
+  EphemeralStructuredView,
+  EphemeralStats,
+  ListEphemeralSessionsParams,
+  PaginatedEphemeralSessions,
+} from './services/EphemeralService';
 
 // Facilitator types (x402 v2)
 export type {

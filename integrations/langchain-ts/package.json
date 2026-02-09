@@ -1,6 +1,6 @@
 {
   "name": "@xache/langchain",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "LangChain.js integration for Xache Protocol - verifiable AI agent memory",
   "main": "dist/index.cjs",
   "module": "dist/index.mjs",

@@ -39,10 +39,14 @@ from .tools import (
     XacheGraphMergeEntitiesTool,
     XacheGraphEntityHistoryTool,
     XacheExtractionTool,
+    XacheEphemeralCreateSessionTool,
+    XacheEphemeralWriteSlotTool,
+    XacheEphemeralReadSlotTool,
+    XacheEphemeralPromoteTool,
 )
 from .memory import XacheMemory, XacheShortTermMemory, XacheLongTermMemory
 
-__version__ = "0.2.0"
+__version__ = "0.4.0"
 __all__ = [
     # Tools
     "xache_tools",
@@ -62,6 +66,11 @@ __all__ = [
     "XacheGraphEntityHistoryTool",
     # Extraction
     "XacheExtractionTool",
+    # Ephemeral Context
+    "XacheEphemeralCreateSessionTool",
+    "XacheEphemeralWriteSlotTool",
+    "XacheEphemeralReadSlotTool",
+    "XacheEphemeralPromoteTool",
     # Memory
     "XacheMemory",
     "XacheShortTermMemory",

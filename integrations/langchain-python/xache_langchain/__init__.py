@@ -37,6 +37,13 @@ from .reputation import (
     XacheReputationChecker,
     ReputationResult,
 )
+from .ephemeral import (
+    XacheEphemeralCreateSessionTool,
+    XacheEphemeralWriteSlotTool,
+    XacheEphemeralReadSlotTool,
+    XacheEphemeralPromoteTool,
+    XacheEphemeralStatusTool,
+)
 from .graph import (
     XacheGraphExtractTool,
     XacheGraphLoadTool,
@@ -49,7 +56,7 @@ from .graph import (
     XacheGraphRetriever,
 )
 
-__version__ = "0.4.0"
+__version__ = "0.6.0"
 __all__ = [
     # Memory
     "XacheMemory",
@@ -77,4 +84,10 @@ __all__ = [
     "XacheGraphMergeEntitiesTool",
     "XacheGraphEntityHistoryTool",
     "XacheGraphRetriever",
+    # Ephemeral Context
+    "XacheEphemeralCreateSessionTool",
+    "XacheEphemeralWriteSlotTool",
+    "XacheEphemeralReadSlotTool",
+    "XacheEphemeralPromoteTool",
+    "XacheEphemeralStatusTool",
 ]

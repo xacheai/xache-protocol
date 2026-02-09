@@ -1,6 +1,6 @@
 # autogen-xache
 
-AutoGen integration for [Xache Protocol](https://xache.xyz) - verifiable AI agent memory with cryptographic receipts, collective intelligence, and portable ERC-8004 reputation.
+AutoGen integration for [Xache Protocol](https://xache.xyz) - verifiable AI agent memory with cryptographic receipts, collective intelligence, ephemeral working memory, knowledge graph, and portable ERC-8004 reputation.
 
 ## Installation
 
@@ -16,7 +16,6 @@ pip install autogen-xache
 from autogen import UserProxyAgent
 from xache_autogen import XacheAssistantAgent
 
-# Create an assistant with Xache capabilities
 assistant = XacheAssistantAgent(
     name="assistant",
     wallet_address="0x...",
@@ -24,13 +23,11 @@ assistant = XacheAssistantAgent(
     llm_config={"model": "gpt-4"}
 )
 
-# Create a user proxy
 user_proxy = UserProxyAgent(
     name="user",
     human_input_mode="TERMINATE"
 )
 
-# Start conversation
 user_proxy.initiate_chat(
     assistant,
     message="Research quantum computing and remember the key findings"
@@ -43,33 +40,25 @@ user_proxy.initiate_chat(
 from autogen import AssistantAgent
 from xache_autogen import xache_functions
 
-# Add Xache functions to LLM config
 llm_config = {
     "model": "gpt-4",
     "functions": xache_functions
 }
 
-agent = AssistantAgent(
-    name="researcher",
-    llm_config=llm_config
-)
+agent = AssistantAgent(name="researcher", llm_config=llm_config)
 ```
 
-## Features
+## Available Functions
 
-### Available Functions
-
-The `xache_functions` list provides these capabilities:
-
-#### Memory Functions
+### Memory Functions
 - **xache_memory_store** - Store information with cryptographic receipts
 - **xache_memory_retrieve** - Retrieve stored memories by semantic search
 
-#### Collective Intelligence Functions
+### Collective Intelligence Functions
 - **xache_collective_contribute** - Share insights with other agents
 - **xache_collective_query** - Learn from community knowledge
 
-#### Knowledge Graph Functions
+### Knowledge Graph Functions
 - **xache_graph_extract** - Extract entities/relationships from text
 - **xache_graph_load** - Load the full knowledge graph
 - **xache_graph_query** - Query graph around an entity
@@ -79,32 +68,71 @@ The `xache_functions` list provides these capabilities:
 - **xache_graph_merge_entities** - Merge duplicate entities
 - **xache_graph_entity_history** - View entity version history
 
-#### Extraction Functions
+### Ephemeral Context Functions
+- **xache_ephemeral_create_session** - Create a short-lived working memory session
+- **xache_ephemeral_write_slot** - Write data to a session slot (conversation, facts, tasks, cache, scratch, handoff)
+- **xache_ephemeral_read_slot** - Read data from a session slot
+- **xache_ephemeral_promote** - Promote session to persistent memory
+- **xache_ephemeral_status** - Get session status and details
+
+### Extraction Functions
 - **xache_extract_memories** - Extract memories from conversation text using LLM
 
-#### Reputation Functions
+### Reputation Functions
 - **xache_check_reputation** - View reputation score and ERC-8004 status
 
-### Agent Types
+## Ephemeral Context
 
-#### XacheMemoryAgent
-
-Basic conversable agent with Xache capabilities:
+Ephemeral context gives agents short-lived scratch sessions for multi-turn workflows. Sessions have 6 named slots and auto-expire.
 
 ```python
-from xache_autogen import XacheMemoryAgent
-
-agent = XacheMemoryAgent(
-    name="researcher",
-    wallet_address="0x...",
-    private_key="0x...",
-    llm_config={"model": "gpt-4"}
+from xache_autogen import (
+    ephemeral_create_session,
+    ephemeral_write_slot,
+    ephemeral_read_slot,
+    ephemeral_promote,
+    ephemeral_status,
 )
+
+config = {
+    "wallet_address": "0x...",
+    "private_key": "0x...",
+}
+
+# Create a session (1 hour TTL)
+session = ephemeral_create_session(ttl_seconds=3600, **config)
+session_key = session["sessionKey"]
+
+# Write context to slots
+ephemeral_write_slot(
+    session_key=session_key,
+    slot="facts",
+    data={"user_name": "Alice", "topic": "quantum computing"},
+    **config
+)
+
+ephemeral_write_slot(
+    session_key=session_key,
+    slot="tasks",
+    data={"pending": ["summarize findings", "generate report"]},
+    **config
+)
+
+# Read slot data
+facts = ephemeral_read_slot(session_key=session_key, slot="facts", **config)
+
+# Check session status
+info = ephemeral_status(session_key=session_key, **config)
+print(f"Status: {info['status']}, Active slots: {info['activeSlots']}")
+
+# Promote to persistent memory when done
+result = ephemeral_promote(session_key=session_key, **config)
+print(f"Created {result['memoriesCreated']} persistent memories")
 ```
 
-#### XacheAssistantAgent
+## Agent Types
 
-Extended AssistantAgent with Xache capabilities:
+### XacheAssistantAgent
 
 ```python
 from xache_autogen import XacheAssistantAgent
@@ -118,9 +146,20 @@ assistant = XacheAssistantAgent(
 )
 ```
 
-### Conversation Memory
+### XacheMemoryAgent
 
-Store and retrieve conversation history:
+```python
+from xache_autogen import XacheMemoryAgent
+
+agent = XacheMemoryAgent(
+    name="researcher",
+    wallet_address="0x...",
+    private_key="0x...",
+    llm_config={"model": "gpt-4"}
+)
+```
+
+## Conversation Memory
 
 ```python
 from xache_autogen import XacheConversationMemory
@@ -131,36 +170,21 @@ memory = XacheConversationMemory(
     conversation_id="unique-session-id"
 )
 
-# Add messages
 memory.add_message("user", "Hello!")
-memory.add_message("assistant", "Hi there! How can I help?")
+memory.add_message("assistant", "Hi there!")
 
-# Get history
 history = memory.get_history()
-
-# Store a summary
-memory.store_summary("User greeted the assistant.")
-
-# Search past conversations
 results = memory.search("quantum computing")
-
-# Format for prompt
 context = memory.format_for_prompt(max_messages=5)
 ```
 
 ## Multi-Agent Conversations
 
-Xache works seamlessly with multi-agent setups:
-
 ```python
 from autogen import UserProxyAgent, GroupChat, GroupChatManager
 from xache_autogen import XacheAssistantAgent
 
-# Shared wallet = shared memory
-config = {
-    "wallet_address": "0x...",
-    "private_key": "0x...",
-}
+config = {"wallet_address": "0x...", "private_key": "0x..."}
 
 researcher = XacheAssistantAgent(
     name="researcher",
@@ -178,28 +202,13 @@ writer = XacheAssistantAgent(
 
 user_proxy = UserProxyAgent(name="user")
 
-# Create group chat
-groupchat = GroupChat(
-    agents=[user_proxy, researcher, writer],
-    messages=[],
-    max_round=10
-)
+groupchat = GroupChat(agents=[user_proxy, researcher, writer], messages=[], max_round=10)
+manager = GroupChatManager(groupchat=groupchat, llm_config={"model": "gpt-4"})
 
-manager = GroupChatManager(
-    groupchat=groupchat,
-    llm_config={"model": "gpt-4"}
-)
-
-# Both agents share the same memory pool
-user_proxy.initiate_chat(
-    manager,
-    message="Research AI safety and write an article"
-)
+user_proxy.initiate_chat(manager, message="Research AI safety and write an article")
 ```
 
 ## Direct Function Usage
-
-Use Xache functions directly outside agents:
 
 ```python
 from xache_autogen import (
@@ -209,79 +218,18 @@ from xache_autogen import (
     collective_query,
     check_reputation,
     graph_extract,
-    graph_query,
     graph_ask,
     extract_memories,
 )
 
-config = {
-    "wallet_address": "0x...",
-    "private_key": "0x...",
-}
+config = {"wallet_address": "0x...", "private_key": "0x..."}
 
-# Store a memory
-result = memory_store(
-    content="Important finding about quantum computing",
-    context="research",
-    tags=["quantum", "computing"],
-    **config
-)
-print(f"Stored: {result['memoryId']}")
-
-# Retrieve memories
-memories = memory_retrieve(
-    query="quantum computing",
-    limit=5,
-    **config
-)
-print(f"Found {memories['count']} memories")
-
-# Contribute to collective
-collective_contribute(
-    insight="Quantum computers excel at optimization problems",
-    domain="quantum-computing",
-    evidence="Research paper XYZ",
-    **config
-)
-
-# Query collective
-insights = collective_query(
-    query="quantum computing applications",
-    domain="quantum-computing",
-    **config
-)
-
-# Check reputation
+result = memory_store(content="Important finding", context="research", **config)
+memories = memory_retrieve(query="quantum computing", limit=5, **config)
 rep = check_reputation(**config)
-print(f"Reputation: {rep['score']} ({rep['level']})")
-
-# Extract entities from text
-result = graph_extract(
-    trace="John works at Acme Corp as a senior engineer.",
-    context_hint="engineering",
-    **config
-)
-print(f"Found {len(result['entities'])} entities")
-
-# Ask questions about the knowledge graph
-answer = graph_ask(
-    question="Who works at Acme Corp?",
-    **config
-)
-print(f"Answer: {answer['answer']}")
-
-# Extract memories from conversations
-memories = extract_memories(
-    trace="User prefers Python over JavaScript for data work.",
-    auto_store=True,
-    **config
-)
-print(f"Extracted {memories['count']} memories")
 ```
 
 ## Pricing
-
-All operations use x402 micropayments (auto-handled):
 
 | Operation | Price |
 |-----------|-------|
@@ -289,13 +237,11 @@ All operations use x402 micropayments (auto-handled):
 | Memory Retrieve | $0.003 |
 | Collective Contribute | $0.002 |
 | Collective Query | $0.011 |
+| Ephemeral Session | $0.005 |
+| Ephemeral Promote | $0.05 |
 | Extraction (managed) | $0.011 |
 | Graph Operations | $0.002 |
 | Graph Ask (managed) | $0.011 |
-
-## ERC-8004 Portable Reputation
-
-Your agents build reputation through quality contributions and payments. Enable ERC-8004 to make reputation portable and verifiable across platforms.
 
 ## Resources
 

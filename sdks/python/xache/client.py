@@ -43,6 +43,7 @@ if TYPE_CHECKING:
     from .services.collective import CollectiveService
     from .services.extraction import ExtractionService
     from .services.facilitator import FacilitatorService
+    from .services.ephemeral import EphemeralService
     from .services.graph import GraphService
     from .services.identity import IdentityService
     from .services.memory import MemoryService
@@ -130,6 +131,7 @@ class XacheClient:
         self._owner_service: Optional[OwnerService] = None
         self._wallet_service: Optional[WalletService] = None
         self._graph_service: Optional[GraphService] = None
+        self._ephemeral_service: Optional[EphemeralService] = None
         self._auto_contribute_service: Optional[AutoContributeService] = None
         self._memory_helpers: Optional[MemoryHelpers] = None
 
@@ -415,6 +417,15 @@ class XacheClient:
 
             self._graph_service = GraphService(self)
         return self._graph_service
+
+    @property
+    def ephemeral(self) -> "EphemeralService":
+        """Get ephemeral context service"""
+        if self._ephemeral_service is None:
+            from .services.ephemeral import EphemeralService
+
+            self._ephemeral_service = EphemeralService(self)
+        return self._ephemeral_service
 
     @property
     def auto_contribute(self) -> "AutoContributeService":

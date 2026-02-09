@@ -67,6 +67,16 @@ from .tools import (
     XacheMemoryRetrieveTool,
     XacheReputationTool,
     XacheSyncTool,
+    # Ephemeral functions
+    ephemeral_create_session,
+    ephemeral_write_slot,
+    ephemeral_read_slot,
+    ephemeral_promote,
+    # Ephemeral tool classes
+    XacheEphemeralCreateSessionTool,
+    XacheEphemeralWriteSlotTool,
+    XacheEphemeralReadSlotTool,
+    XacheEphemeralPromoteTool,
     # Graph tool classes
     XacheGraphExtractTool,
     XacheGraphLoadTool,
@@ -91,7 +101,7 @@ from .extraction import (
 
 from .config import XacheConfig, get_config, set_config, clear_config
 
-__version__ = "0.2.0"
+__version__ = "0.4.0"
 __all__ = [
     # Config
     "XacheConfig",
@@ -133,6 +143,16 @@ __all__ = [
     "XacheGraphAddRelationshipTool",
     "XacheGraphMergeEntitiesTool",
     "XacheGraphEntityHistoryTool",
+    # Ephemeral functions
+    "ephemeral_create_session",
+    "ephemeral_write_slot",
+    "ephemeral_read_slot",
+    "ephemeral_promote",
+    # Ephemeral tool classes
+    "XacheEphemeralCreateSessionTool",
+    "XacheEphemeralWriteSlotTool",
+    "XacheEphemeralReadSlotTool",
+    "XacheEphemeralPromoteTool",
     # Extraction
     "MemoryExtractor",
     "ExtractedMemory",

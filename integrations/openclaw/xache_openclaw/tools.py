@@ -966,6 +966,206 @@ class XacheGraphEntityHistoryTool:
 
 
 # =============================================================================
+# Ephemeral Context Functions
+# =============================================================================
+
+
+def ephemeral_create_session(
+    ttl_seconds: int = 3600,
+    max_windows: int = 5,
+    config: Optional[XacheConfig] = None,
+) -> Dict[str, Any]:
+    """
+    Create a new ephemeral working memory session.
+
+    Args:
+        ttl_seconds: Session TTL in seconds (default 3600)
+        max_windows: Maximum renewal windows (default 5)
+        config: Optional config override
+
+    Returns:
+        Dict with session_key and session details
+
+    Example:
+        ```python
+        from xache_openclaw import ephemeral_create_session
+
+        session = ephemeral_create_session(ttl_seconds=1800)
+        print(f"Session: {session['sessionKey']}")
+        ```
+    """
+    client = create_xache_client(config)
+
+    async def _create():
+        async with client as c:
+            return await c.ephemeral.create_session(
+                ttl_seconds=ttl_seconds, max_windows=max_windows,
+            )
+
+    session = run_sync(_create())
+    return {
+        "sessionKey": session.session_key,
+        "status": session.status,
+        "ttlSeconds": session.ttl_seconds,
+        "expiresAt": session.expires_at,
+    }
+
+
+def ephemeral_write_slot(
+    session_key: str,
+    slot: str,
+    data: Dict[str, Any],
+    config: Optional[XacheConfig] = None,
+) -> Dict[str, Any]:
+    """
+    Write data to an ephemeral session slot.
+
+    Args:
+        session_key: The session key
+        slot: Slot name (conversation, facts, tasks, cache, scratch, handoff)
+        data: Data to write
+        config: Optional config override
+
+    Returns:
+        Dict with confirmation
+    """
+    client = create_xache_client(config)
+
+    async def _write():
+        async with client as c:
+            await c.ephemeral.write_slot(session_key, slot, data)
+
+    run_sync(_write())
+    return {"sessionKey": session_key, "slot": slot, "message": f'Wrote data to slot "{slot}"'}
+
+
+def ephemeral_read_slot(
+    session_key: str,
+    slot: str,
+    config: Optional[XacheConfig] = None,
+) -> Dict[str, Any]:
+    """
+    Read data from an ephemeral session slot.
+
+    Args:
+        session_key: The session key
+        slot: Slot name
+        config: Optional config override
+
+    Returns:
+        Dict with slot data
+    """
+    client = create_xache_client(config)
+
+    async def _read():
+        async with client as c:
+            return await c.ephemeral.read_slot(session_key, slot)
+
+    return run_sync(_read())
+
+
+def ephemeral_promote(
+    session_key: str,
+    config: Optional[XacheConfig] = None,
+) -> Dict[str, Any]:
+    """
+    Promote an ephemeral session to persistent memory.
+
+    Args:
+        session_key: The session key
+        config: Optional config override
+
+    Returns:
+        Dict with promotion result
+    """
+    client = create_xache_client(config)
+
+    async def _promote():
+        async with client as c:
+            return await c.ephemeral.promote_session(session_key)
+
+    result = run_sync(_promote())
+    return {
+        "memoriesCreated": result.memories_created,
+        "memoryIds": result.memory_ids,
+        "receiptId": result.receipt_id,
+    }
+
+
+# =============================================================================
+# Ephemeral Context Tool Classes
+# =============================================================================
+
+
+@dataclass
+class XacheEphemeralCreateSessionTool:
+    """OpenClaw tool for creating ephemeral sessions."""
+    name: str = "xache_ephemeral_create_session"
+    description: str = (
+        "Create a new ephemeral working memory session. "
+        "Returns a session key for storing temporary data in slots."
+    )
+
+    def run(self, ttl_seconds: int = 3600, max_windows: int = 5) -> str:
+        result = ephemeral_create_session(ttl_seconds, max_windows)
+        return (
+            f"Created ephemeral session.\n"
+            f"Session Key: {result['sessionKey']}\n"
+            f"Status: {result['status']}\n"
+            f"TTL: {result['ttlSeconds']}s\n"
+            f"Expires: {result['expiresAt']}"
+        )
+
+
+@dataclass
+class XacheEphemeralWriteSlotTool:
+    """OpenClaw tool for writing to ephemeral slots."""
+    name: str = "xache_ephemeral_write_slot"
+    description: str = (
+        "Write data to an ephemeral session slot. "
+        "Slots: conversation, facts, tasks, cache, scratch, handoff."
+    )
+
+    def run(self, session_key: str, slot: str, data: Dict[str, Any]) -> str:
+        ephemeral_write_slot(session_key, slot, data)
+        return f'Wrote data to slot "{slot}" in session {session_key[:12]}...'
+
+
+@dataclass
+class XacheEphemeralReadSlotTool:
+    """OpenClaw tool for reading from ephemeral slots."""
+    name: str = "xache_ephemeral_read_slot"
+    description: str = (
+        "Read data from an ephemeral session slot."
+    )
+
+    def run(self, session_key: str, slot: str) -> str:
+        import json
+        data = ephemeral_read_slot(session_key, slot)
+        return json.dumps(data, indent=2)
+
+
+@dataclass
+class XacheEphemeralPromoteTool:
+    """OpenClaw tool for promoting ephemeral sessions to persistent memory."""
+    name: str = "xache_ephemeral_promote"
+    description: str = (
+        "Promote an ephemeral session to persistent memory. "
+        "Extracts valuable data from slots and stores as permanent memories."
+    )
+
+    def run(self, session_key: str) -> str:
+        result = ephemeral_promote(session_key)
+        output = f"Promoted session {session_key[:12]}...\n"
+        output += f"Memories created: {result['memoriesCreated']}\n"
+        if result.get("memoryIds"):
+            output += f"Memory IDs: {', '.join(result['memoryIds'])}\n"
+        if result.get("receiptId"):
+            output += f"Receipt: {result['receiptId']}"
+        return output
+
+
+# =============================================================================
 # Tool Factory
 # =============================================================================
 
@@ -982,6 +1182,7 @@ def xache_tools(
     include_sync: bool = True,
     include_extraction: bool = False,  # Requires LLM
     include_graph: bool = True,
+    include_ephemeral: bool = True,
     llm: Optional[Callable[[str], str]] = None,  # Required for extraction
 ) -> List:
     """
@@ -1088,6 +1289,14 @@ def xache_tools(
             XacheGraphAddRelationshipTool(),
             XacheGraphMergeEntitiesTool(),
             XacheGraphEntityHistoryTool(),
+        ])
+
+    if include_ephemeral:
+        tools.extend([
+            XacheEphemeralCreateSessionTool(),
+            XacheEphemeralWriteSlotTool(),
+            XacheEphemeralReadSlotTool(),
+            XacheEphemeralPromoteTool(),
         ])
 
     return tools

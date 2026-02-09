@@ -25,7 +25,7 @@ Example:
     ```
 """
 
-__version__ = "5.5.0"
+__version__ = "5.9.0"
 
 # Main client
 from .client import XacheClient
@@ -115,6 +115,9 @@ from .services.extraction import (
 # Graph types
 from .graph import Entity, Relationship, Graph, GraphAnswer, GraphExtractionResult
 from .services.graph import GraphService
+
+# Ephemeral Context
+from .services.ephemeral import EphemeralService
 
 # Subject Keys
 from .crypto.subject import (
@@ -293,4 +296,6 @@ __all__ = [
     "GraphAnswer",
     "GraphExtractionResult",
     "GraphService",
+    # Ephemeral Context
+    "EphemeralService",
 ]

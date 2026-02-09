@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "crewai-xache"
-version = "0.3.0"
+version = "0.4.0"
 description = "CrewAI integration for Xache Protocol - verifiable AI agent memory"
 readme = "README.md"
 license = {text = "MIT"}
@@ -37,7 +37,7 @@ classifiers = [
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 dependencies = [
-    "xache>=5.1.0",
+    "xache>=5.9.0",
     "crewai>=0.1.0",
     "pydantic>=2.0.0",
 ]

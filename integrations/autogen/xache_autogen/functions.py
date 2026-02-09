@@ -744,6 +744,223 @@ def extract_memories(
     }
 
 
+# =============================================================================
+# Ephemeral Context Functions
+# =============================================================================
+
+
+def ephemeral_create_session(
+    ttl_seconds: int = 3600,
+    max_windows: int = 5,
+    *,
+    wallet_address: str,
+    private_key: Optional[str] = None,
+    api_url: Optional[str] = None,
+    chain: str = "base",
+    signer: Optional[Any] = None,
+    wallet_provider: Optional[Any] = None,
+    encryption_key: Optional[str] = None,
+) -> Dict[str, Any]:
+    """
+    Create a new ephemeral working memory session.
+
+    Args:
+        ttl_seconds: Session TTL in seconds (default 3600)
+        max_windows: Maximum renewal windows (default 5)
+        wallet_address: Wallet address for authentication
+        private_key: Private key for signing
+        api_url: Xache API URL
+        chain: Chain to use ('base' or 'solana')
+
+    Returns:
+        Dict with session_key and session details
+    """
+    client = create_xache_client(wallet_address, private_key, api_url, chain, signer=signer, wallet_provider=wallet_provider, encryption_key=encryption_key)
+
+    async def _create():
+        async with client as c:
+            return await c.ephemeral.create_session(
+                ttl_seconds=ttl_seconds, max_windows=max_windows,
+            )
+
+    session = run_sync(_create())
+    return {
+        "sessionKey": session.session_key,
+        "status": session.status,
+        "ttlSeconds": session.ttl_seconds,
+        "expiresAt": session.expires_at,
+        "message": f"Created ephemeral session {session.session_key[:12]}...",
+    }
+
+
+def ephemeral_write_slot(
+    session_key: str,
+    slot: str,
+    data: Dict[str, Any],
+    *,
+    wallet_address: str,
+    private_key: Optional[str] = None,
+    api_url: Optional[str] = None,
+    chain: str = "base",
+    signer: Optional[Any] = None,
+    wallet_provider: Optional[Any] = None,
+    encryption_key: Optional[str] = None,
+) -> Dict[str, Any]:
+    """
+    Write data to an ephemeral session slot.
+
+    Args:
+        session_key: The session key
+        slot: Slot name (conversation, facts, tasks, cache, scratch, handoff)
+        data: Data to write
+        wallet_address: Wallet address for authentication
+        private_key: Private key for signing
+        api_url: Xache API URL
+        chain: Chain to use
+
+    Returns:
+        Dict with confirmation
+    """
+    client = create_xache_client(wallet_address, private_key, api_url, chain, signer=signer, wallet_provider=wallet_provider, encryption_key=encryption_key)
+
+    async def _write():
+        async with client as c:
+            await c.ephemeral.write_slot(session_key, slot, data)
+
+    run_sync(_write())
+    return {
+        "sessionKey": session_key,
+        "slot": slot,
+        "message": f'Wrote data to slot "{slot}"',
+    }
+
+
+def ephemeral_read_slot(
+    session_key: str,
+    slot: str,
+    *,
+    wallet_address: str,
+    private_key: Optional[str] = None,
+    api_url: Optional[str] = None,
+    chain: str = "base",
+    signer: Optional[Any] = None,
+    wallet_provider: Optional[Any] = None,
+    encryption_key: Optional[str] = None,
+) -> Dict[str, Any]:
+    """
+    Read data from an ephemeral session slot.
+
+    Args:
+        session_key: The session key
+        slot: Slot name
+        wallet_address: Wallet address for authentication
+        private_key: Private key for signing
+        api_url: Xache API URL
+        chain: Chain to use
+
+    Returns:
+        Dict with slot data
+    """
+    client = create_xache_client(wallet_address, private_key, api_url, chain, signer=signer, wallet_provider=wallet_provider, encryption_key=encryption_key)
+
+    async def _read():
+        async with client as c:
+            return await c.ephemeral.read_slot(session_key, slot)
+
+    data = run_sync(_read())
+    return {
+        "sessionKey": session_key,
+        "slot": slot,
+        "data": data,
+    }
+
+
+def ephemeral_promote(
+    session_key: str,
+    *,
+    wallet_address: str,
+    private_key: Optional[str] = None,
+    api_url: Optional[str] = None,
+    chain: str = "base",
+    signer: Optional[Any] = None,
+    wallet_provider: Optional[Any] = None,
+    encryption_key: Optional[str] = None,
+) -> Dict[str, Any]:
+    """
+    Promote an ephemeral session to persistent memory.
+
+    Args:
+        session_key: The session key
+        wallet_address: Wallet address for authentication
+        private_key: Private key for signing
+        api_url: Xache API URL
+        chain: Chain to use
+
+    Returns:
+        Dict with promotion result
+    """
+    client = create_xache_client(wallet_address, private_key, api_url, chain, signer=signer, wallet_provider=wallet_provider, encryption_key=encryption_key)
+
+    async def _promote():
+        async with client as c:
+            return await c.ephemeral.promote_session(session_key)
+
+    result = run_sync(_promote())
+    return {
+        "memoriesCreated": result.memories_created,
+        "memoryIds": result.memory_ids,
+        "receiptId": result.receipt_id,
+        "message": f"Promoted session, created {result.memories_created} memories",
+    }
+
+
+def ephemeral_status(
+    session_key: str,
+    *,
+    wallet_address: str,
+    private_key: Optional[str] = None,
+    api_url: Optional[str] = None,
+    chain: str = "base",
+    signer: Optional[Any] = None,
+    wallet_provider: Optional[Any] = None,
+    encryption_key: Optional[str] = None,
+) -> Dict[str, Any]:
+    """
+    Get ephemeral session status and details.
+
+    Args:
+        session_key: The session key
+        wallet_address: Wallet address for authentication
+        private_key: Private key for signing
+        api_url: Xache API URL
+        chain: Chain to use
+
+    Returns:
+        Dict with session details
+    """
+    client = create_xache_client(wallet_address, private_key, api_url, chain, signer=signer, wallet_provider=wallet_provider, encryption_key=encryption_key)
+
+    async def _status():
+        async with client as c:
+            return await c.ephemeral.get_session(session_key)
+
+    session = run_sync(_status())
+    if not session:
+        return {"error": f"Session {session_key[:12]}... not found"}
+
+    return {
+        "sessionKey": session.session_key,
+        "status": session.status,
+        "window": session.window,
+        "maxWindows": session.max_windows,
+        "ttlSeconds": session.ttl_seconds,
+        "expiresAt": session.expires_at,
+        "activeSlots": session.active_slots,
+        "totalSize": session.total_size,
+        "cumulativeCost": session.cumulative_cost,
+    }
+
+
 # Function schemas for AutoGen
 xache_functions = [
     {
@@ -1021,6 +1238,91 @@ xache_functions = [
                 }
             },
             "required": ["trace"]
+        }
+    },
+    {
+        "name": "xache_ephemeral_create_session",
+        "description": "Create a new ephemeral working memory session. Returns a session key for storing temporary data in slots.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "ttl_seconds": {
+                    "type": "integer",
+                    "description": "Session TTL in seconds (default: 3600)"
+                },
+                "max_windows": {
+                    "type": "integer",
+                    "description": "Maximum renewal windows (default: 5)"
+                }
+            }
+        }
+    },
+    {
+        "name": "xache_ephemeral_write_slot",
+        "description": "Write data to an ephemeral session slot. Slots: conversation, facts, tasks, cache, scratch, handoff.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "session_key": {
+                    "type": "string",
+                    "description": "The ephemeral session key"
+                },
+                "slot": {
+                    "type": "string",
+                    "description": "Slot name (conversation, facts, tasks, cache, scratch, handoff)"
+                },
+                "data": {
+                    "type": "object",
+                    "description": "Data to write to the slot"
+                }
+            },
+            "required": ["session_key", "slot", "data"]
+        }
+    },
+    {
+        "name": "xache_ephemeral_read_slot",
+        "description": "Read data from an ephemeral session slot.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "session_key": {
+                    "type": "string",
+                    "description": "The ephemeral session key"
+                },
+                "slot": {
+                    "type": "string",
+                    "description": "Slot name (conversation, facts, tasks, cache, scratch, handoff)"
+                }
+            },
+            "required": ["session_key", "slot"]
+        }
+    },
+    {
+        "name": "xache_ephemeral_promote",
+        "description": "Promote an ephemeral session to persistent memory. Extracts valuable data from slots and stores as permanent memories.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "session_key": {
+                    "type": "string",
+                    "description": "The ephemeral session key to promote"
+                }
+            },
+            "required": ["session_key"]
+        }
+    },
+    {
+        "name": "xache_ephemeral_status",
+        "description": "Get ephemeral session status and details. Shows active slots, size, TTL, and window information.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "session_key": {
+                    "type": "string",
+                    "description": "The ephemeral session key"
+                }
+            },
+            "required": ["session_key"]
         }
     }
 ]

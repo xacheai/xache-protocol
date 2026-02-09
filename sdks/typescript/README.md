@@ -1,17 +1,19 @@
 # Xache Protocol TypeScript SDK
 
-Official TypeScript SDK for [Xache Protocol](https://xache.xyz) - decentralized agent memory and collective intelligence marketplace.
+Official TypeScript SDK for [Xache Protocol](https://xache.xyz) - decentralized agent memory, collective intelligence, ephemeral working memory, and knowledge graph.
 
 ## Features
 
-✅ **Type-safe** - Full TypeScript support with comprehensive types
-✅ **Authentication** - Automatic request signing per protocol spec
-✅ **Payment Flow** - Built-in 402 payment handling with x402 v2 support
-✅ **Wallet Sessions** - Skip repeated payments with wallet-based sessions (x402 v2)
-✅ **Multi-Facilitator** - Intelligent payment routing across facilitators (x402 v2)
-✅ **Encryption** - Client-side encryption for memory storage
-✅ **Error Handling** - Typed errors with automatic retry logic
-✅ **Budget Management** - Track and control spending limits with alerts
+- **Type-safe** - Full TypeScript support with comprehensive types
+- **Authentication** - Automatic request signing per protocol spec
+- **Payment Flow** - Built-in 402 payment handling with x402 v2 support
+- **Wallet Sessions** - Skip repeated payments with wallet-based sessions (x402 v2)
+- **Multi-Facilitator** - Intelligent payment routing across facilitators (x402 v2)
+- **Encryption** - Client-side encryption for memory storage
+- **Error Handling** - Typed errors with automatic retry logic
+- **Budget Management** - Track and control spending limits with alerts
+- **Ephemeral Context** - Short-lived working memory sessions with slot-based storage
+- **Knowledge Graph** - Privacy-preserving entity and relationship graph
 
 ## Installation
 
@@ -24,7 +26,6 @@ npm install @xache/sdk
 ```typescript
 import { XacheClient } from '@xache/sdk';
 
-// Initialize client
 const client = new XacheClient({
   apiUrl: 'https://api.xache.xyz',
   did: 'did:agent:evm:0xYourWalletAddress',
@@ -48,18 +49,12 @@ console.log('DID:', identity.did);
 ```typescript
 // Store encrypted memory (automatic encryption + 402 payment)
 const memory = await client.memory.store({
-  data: {
-    context: 'user preferences',
-    theme: 'dark',
-    language: 'en',
-  },
-  storageTier: 'hot', // 'hot' | 'warm' | 'cold'
-  context: 'user-preferences', // optional: for organization
-  tags: ['settings'], // optional: for filtering
+  data: { context: 'user preferences', theme: 'dark' },
+  storageTier: 'hot',
+  tags: ['settings'],
 });
 
 console.log('Storage Key:', memory.storageKey);
-console.log('Receipt ID:', memory.receiptId);
 
 // Retrieve memory (automatic decryption + 402 payment)
 const retrieved = await client.memory.retrieve({
@@ -68,219 +63,174 @@ const retrieved = await client.memory.retrieve({
 
 console.log('Data:', retrieved.data);
 
-// List memories (free)
-const list = await client.memory.list({
-  context: 'user-preferences',
-  limit: 20,
-});
-
-console.log('Total memories:', list.total);
-
-// Delete memory (free)
+// List and delete
+const list = await client.memory.list({ limit: 20 });
 await client.memory.delete(memory.storageKey);
 ```
 
 ### Batch Memory Operations
 
 ```typescript
-// Store multiple memories in one request
 const batchResult = await client.memory.storeBatch({
   items: [
     { data: { key: 'value1' }, storageTier: 'hot' },
     { data: { key: 'value2' }, storageTier: 'warm' },
-    { data: { key: 'value3' }, storageTier: 'cold' },
   ],
 });
 
-console.log('Success:', batchResult.successCount);
-console.log('Failed:', batchResult.failureCount);
-
-// Retrieve multiple memories (single payment, batch pricing)
 const retrieveResult = await client.memory.retrieveBatch({
-  storageKeys: ['mem_123', 'mem_456', 'mem_789'],
-});
-
-console.log('Success:', retrieveResult.successCount);
-console.log('Failed:', retrieveResult.failureCount);
-
-// Access individual results (automatically decrypted)
-retrieveResult.results.forEach(result => {
-  console.log(`${result.storageKey}:`, result.data);
+  storageKeys: ['mem_123', 'mem_456'],
 });
 ```
 
 ### Collective Intelligence
 
 ```typescript
-import crypto from 'crypto';
-
-// Helper to hash pattern
-function hashPattern(pattern: string): string {
-  return crypto.createHash('sha256').update(pattern).digest('hex');
-}
-
 // Contribute a heuristic (automatic 402 payment)
-const pattern = 'Use async/await for cleaner async code in JavaScript';
-const patternHash = hashPattern(pattern);
-
 const heuristic = await client.collective.contribute({
-  pattern,
-  patternHash,
+  pattern: 'Use async/await for cleaner async code',
+  patternHash: hashPattern(pattern),
   domain: 'javascript',
-  tags: ['async', 'best-practices', 'readability'],
-  metrics: {
-    successRate: 0.85,
-    sampleSize: 10,
-    confidence: 0.9,
-  },
+  tags: ['async', 'best-practices'],
+  metrics: { successRate: 0.85, sampleSize: 10, confidence: 0.9 },
   encryptedContentRef: patternHash,
 });
 
-console.log('Heuristic ID:', heuristic.heuristicId);
-
-// Query collective (automatic 402 payment)
+// Query collective
 const results = await client.collective.query({
   queryText: 'How to optimize database queries in Node.js',
   domain: 'nodejs',
   limit: 10,
 });
+```
 
-results.matches.forEach(match => {
-  console.log(`Pattern: ${match.pattern}`);
-  console.log(`Score: ${match.relevanceScore}`);
-  console.log(`Royalty: $${match.royaltyAmount}`);
+### Ephemeral Context (Working Memory)
+
+Short-lived scratch sessions for multi-turn agent workflows. Sessions have 6 named slots (`conversation`, `facts`, `tasks`, `cache`, `scratch`, `handoff`) and can be promoted to persistent memory when done.
+
+```typescript
+// Create an ephemeral session (x402 payment: $0.005)
+const session = await client.ephemeral.createSession({
+  ttlSeconds: 3600,   // 1 hour
+  maxWindows: 5,
 });
 
-// List heuristics (free)
-const heuristics = await client.collective.listHeuristics({
-  domain: 'javascript',
-  limit: 20,
+console.log('Session:', session.sessionKey);
+console.log('Expires:', session.expiresAt);
+
+// Write to slots (free while session is active)
+await client.ephemeral.writeSlot(session.sessionKey, 'facts', {
+  userName: 'Alice',
+  preference: 'dark_mode',
 });
+
+await client.ephemeral.writeSlot(session.sessionKey, 'tasks', {
+  pending: ['research quantum computing', 'write summary'],
+});
+
+// Read from a slot
+const facts = await client.ephemeral.readSlot(session.sessionKey, 'facts');
+console.log('Facts:', facts);
+
+// Read all slots at once
+const allSlots = await client.ephemeral.readAllSlots(session.sessionKey);
+
+// Promote to persistent memory when session is valuable ($0.05)
+const result = await client.ephemeral.promoteSession(session.sessionKey);
+console.log(`Created ${result.memoriesCreated} memories`);
+console.log('Memory IDs:', result.memoryIds);
+
+// Or terminate if no longer needed (free)
+await client.ephemeral.terminateSession(session.sessionKey);
+```
+
+#### Session Management
+
+```typescript
+// List active sessions
+const sessions = await client.ephemeral.listSessions({ status: 'active' });
+
+// Renew an expiring session
+const renewed = await client.ephemeral.renewSession(session.sessionKey);
+
+// Get structured view (entities + relationships extracted from session data)
+const structured = await client.ephemeral.getStructured(session.sessionKey);
+
+// Export session data
+const exported = await client.ephemeral.exportSession(session.sessionKey, 'json');
+
+// Get usage stats
+const stats = await client.ephemeral.getStats();
+console.log('Active sessions:', stats.activeSessions);
+console.log('Promote rate:', stats.promoteRate);
+```
+
+### Knowledge Graph
+
+```typescript
+// Extract entities from text
+const extracted = await client.graph.extract({
+  trace: 'Alice works at Acme Corp as a senior engineer.',
+  contextHint: 'engineering',
+});
+
+// Query around an entity
+const neighbors = await client.graph.query({
+  startEntity: 'Alice',
+  depth: 2,
+});
+
+// Ask natural language questions
+const answer = await client.graph.ask({
+  question: 'Who works at Acme Corp?',
+});
+
+// Load the full graph
+const graph = await client.graph.load();
 ```
 
 ### Budget Management
 
 ```typescript
-import { BudgetAlertLevel } from '@xache/sdk';
-
-// Check budget status
 const budget = await client.budget.getStatus();
-
 console.log(`Limit: $${budget.limitCents / 100}`);
 console.log(`Spent: $${budget.spentCents / 100}`);
-console.log(`Remaining: $${budget.remainingCents / 100}`);
-console.log(`Usage: ${budget.percentageUsed.toFixed(1)}%`);
 
-// Update budget limit
 await client.budget.updateLimit(5000); // $50/month
 
-// Check if you can afford an operation
-const canAfford = await client.budget.canAfford(100); // returns boolean
-if (canAfford) {
-  console.log('Operation is within budget');
-}
-
-// Register budget alert handler
 client.budget.onAlert((alert) => {
-  console.log(`Budget Alert: ${alert.level}`);
-  console.log(`Message: ${alert.message}`);
-  console.log(`Usage: ${alert.percentageUsed.toFixed(1)}%`);
-
-  if (alert.level === BudgetAlertLevel.CRITICAL_100) {
-    console.error('CRITICAL: Budget limit reached!');
-  }
-});
-
-// Check active alerts
-const activeAlerts = await client.budget.getActiveAlerts();
-```
-
-### Receipts & Analytics
-
-```typescript
-// List receipts
-const receipts = await client.receipts.list({
-  limit: 20,
-  offset: 0,
-});
-
-receipts.receipts.forEach(receipt => {
-  console.log(`${receipt.operation}: $${receipt.amountUSD}`);
-});
-
-// Get Merkle proof for verification
-const proof = await client.receipts.getProof('receipt_abc123');
-console.log('Merkle Root:', proof.merkleRoot);
-
-// Get usage analytics
-const analytics = await client.receipts.getAnalytics({
-  startDate: '2024-01-01',
-  endDate: '2024-01-31',
-});
-
-console.log('Total spent:', analytics.totalSpent);
-
-// List blockchain anchors
-const anchors = await client.receipts.listAnchors({
-  from: '2024-01-01T00:00:00Z',
-  to: '2024-01-31T23:59:59Z',
-});
-
-anchors.anchors.forEach(anchor => {
-  console.log(`${anchor.hour}: ${anchor.receiptCount} receipts`);
-  if (anchor.dualAnchored) {
-    console.log('  ✓ Dual-anchored on Base and Solana');
-  }
+  console.log(`Budget Alert: ${alert.level} - ${alert.message}`);
 });
 ```
 
 ### Reputation
 
 ```typescript
-// Get your agent's reputation
 const reputation = await client.reputation.getReputation();
-
 console.log('Overall Score:', reputation.overall);
-console.log('Memory Quality:', reputation.memoryQuality);
-console.log('Contribution Success:', reputation.contribSuccess);
 
-// Get top agents leaderboard
 const topAgents = await client.reputation.getTopAgents(10);
-
-topAgents.forEach((agent, i) => {
-  console.log(`${i + 1}. ${agent.agentDID}: ${agent.reputationScore}`);
-});
 ```
 
 ## Configuration
-
-### Basic Configuration
 
 ```typescript
 const client = new XacheClient({
   apiUrl: 'https://api.xache.xyz',
   did: 'did:agent:evm:0xYourWalletAddress',
-  privateKey: '0x...', // 64-char hex (EVM) or 128-char hex (Solana)
-  timeout: 30000, // Optional: request timeout in ms (default: 30000)
-  debug: false,   // Optional: enable debug logging
+  privateKey: '0x...',
+  timeout: 30000,
+  debug: false,
 });
 ```
 
 ## Error Handling
 
-The SDK provides typed errors for all API error codes:
-
 ```typescript
 import {
-  XacheError,
-  UnauthenticatedError,
   PaymentRequiredError,
   RateLimitedError,
   BudgetExceededError,
-  InvalidInputError,
-  ConflictError,
-  RetryLaterError,
-  InternalError,
   NetworkError,
 } from '@xache/sdk';
 
@@ -289,33 +239,23 @@ try {
 } catch (error) {
   if (error instanceof PaymentRequiredError) {
     console.log('Payment required:', error.amount);
-    console.log('Challenge ID:', error.challengeId);
-    console.log('Pay to:', error.payTo);
   } else if (error instanceof RateLimitedError) {
     console.log('Rate limited. Retry at:', error.resetAt);
-  } else if (error instanceof BudgetExceededError) {
-    console.log('Budget exceeded');
-  } else if (error instanceof ConflictError) {
-    console.log('Resource conflict (409)');
-  } else if (error instanceof NetworkError) {
-    console.log('Network error:', error.originalError);
   }
 }
 ```
 
 ## API Reference
 
-### XacheClient
-
-Main client class for interacting with Xache Protocol.
-
-#### Services
+### XacheClient Services
 
 | Service | Description |
 |---------|-------------|
 | `client.identity` | Identity registration, updates, ownership claims |
 | `client.memory` | Memory storage, retrieval, batch operations |
 | `client.collective` | Collective intelligence marketplace |
+| `client.ephemeral` | Ephemeral working memory sessions |
+| `client.graph` | Knowledge graph operations |
 | `client.budget` | Budget management with alerts |
 | `client.receipts` | Receipt access, proofs, and analytics |
 | `client.reputation` | Agent reputation scores |
@@ -326,186 +266,72 @@ Main client class for interacting with Xache Protocol.
 | `client.workspaces` | Workspace management for teams |
 | `client.owner` | Owner registration and agent fleet management |
 
-### Types
+## Pricing
 
-All request/response types are exported:
-
-```typescript
-import type {
-  // Memory
-  StoreMemoryRequest,
-  StoreMemoryResponse,
-  RetrieveMemoryRequest,
-  RetrieveMemoryResponse,
-  BatchStoreMemoryRequest,
-  BatchRetrieveMemoryRequest,
-
-  // Collective
-  ContributeHeuristicRequest,
-  ContributeHeuristicResponse,
-  QueryCollectiveRequest,
-  QueryCollectiveResponse,
-
-  // Budget
-  BudgetStatus,
-  BudgetAlert,
-  BudgetAlertLevel,
-
-  // Receipts
-  Receipt,
-  ReceiptWithProof,
-  UsageAnalytics,
-
-  // Reputation
-  ReputationSnapshot,
-
-  // Sessions (x402 v2)
-  WalletSession,
-  CreateSessionOptions,
-  SessionValidation,
-
-  // Facilitators (x402 v2)
-  FacilitatorConfig,
-  FacilitatorSelection,
-} from '@xache/sdk';
-```
+| Operation | Price |
+|-----------|-------|
+| Memory Store | $0.002 |
+| Memory Retrieve | $0.003 |
+| Batch Store (per item) | $0.0009 |
+| Batch Retrieve (per item) | $0.0016 |
+| Collective Contribute | $0.002 |
+| Collective Query | $0.011 |
+| Ephemeral Session | $0.005 |
+| Ephemeral Promote | $0.05 |
+| Graph Operations | $0.002 |
+| Graph Ask (managed) | $0.011 |
+| Extraction (BYOK) | $0.002 |
+| Extraction (managed) | $0.011 |
 
 ## x402 v2 Features
 
-The SDK supports the x402 v2 protocol with backward compatibility for v1 clients.
-
 ### Wallet Sessions
 
-Wallet sessions allow you to skip repeated payment flows by pre-authorizing a spending budget:
-
 ```typescript
-// Create a wallet session
 const session = await client.sessions.create({
   walletAddress: '0xYourWalletAddress',
   chain: 'evm',
   network: 'base-sepolia',
   scope: ['memory:store', 'memory:retrieve'],
-  durationSeconds: 3600, // 1 hour
-  maxAmount: '10000000', // 10 USDC (in atomic units)
+  durationSeconds: 3600,
+  maxAmount: '10000000',
 });
 
-console.log('Session ID:', session.sessionId);
-console.log('Expires at:', new Date(session.expiresAt));
-
-// Activate the session for automatic use
 client.sessions.setCurrentSession(session.sessionId);
-
-// All subsequent requests will use the session
-await client.memory.store({ data: { key: 'value' }, storageTier: 'hot' });
-
-// Check remaining budget
-const remaining = client.sessions.getRemainingBudget(session);
-console.log('Remaining:', remaining);
-
-// Validate session for specific operation
-const validation = await client.sessions.validate(
-  session.sessionId,
-  session.walletAddress, // walletAddress required for routing
-  { amount: '1000', scope: 'memory:store' }
-);
-
-if (validation.valid && validation.hasBudget) {
-  console.log('Session is valid with sufficient budget');
-}
-
-// Revoke session when done (walletAddress required)
-await client.sessions.revoke(session.sessionId, session.walletAddress);
+// All subsequent requests use the session automatically
 ```
 
 ### Facilitator Selection
 
-The SDK supports multiple payment facilitators with intelligent selection:
-
 ```typescript
-// List available facilitators
 const facilitators = await client.facilitators.list();
-facilitators.forEach(f => console.log(f.name, f.networks));
 
-// Set preferences for facilitator selection
 client.facilitators.setPreferences({
   preferredFacilitators: ['cdp'],
   preferredChain: 'solana',
-  maxLatencyMs: 5000,
 });
-
-// Select best facilitator for requirements
-const selection = await client.facilitators.select({
-  chain: 'evm',
-  network: 'base-sepolia',
-});
-
-if (selection) {
-  console.log('Selected:', selection.facilitator.name);
-  console.log('Reason:', selection.reason); // 'preference' | 'priority' | 'latency' | 'fallback'
-  console.log('Alternatives:', selection.alternatives.length);
-}
 ```
 
 ## Advanced Usage
 
-### Custom Encryption Key
-
-```typescript
-// Set custom encryption key for memory
-client.memory.setEncryptionKey('your-base64-key');
-
-// Get current encryption key for backup (async)
-const key = await client.memory.getCurrentEncryptionKey();
-```
-
-### Manual Request Signing
-
-```typescript
-import { generateAuthHeaders } from '@xache/sdk';
-
-const headers = generateAuthHeaders(
-  'POST',
-  '/v1/memory/store',
-  JSON.stringify(body),
-  did,
-  privateKey
-);
-```
-
 ### Subject Keys (Multi-tenant Memory Isolation)
 
 ```typescript
-// Derive pseudonymous subject ID from customer identifier
 const subjectId = await client.deriveSubjectId('customer_12345');
 
-// Store memory scoped to this subject
 await client.memory.store({
   data: { preference: 'dark_mode' },
   storageTier: 'hot',
   subject: client.createSubjectContext(subjectId),
 });
-
-// Batch derive for multiple customers
-const subjectIds = await client.batchDeriveSubjectIds([
-  'customer_001',
-  'customer_002',
-  'customer_003',
-]);
 ```
 
 ## Development
 
 ```bash
-# Install dependencies
 npm install
-
-# Build
 npm run build
-
-# Run tests
 npm test
-
-# Lint
 npm run lint
 ```
 

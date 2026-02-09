@@ -686,6 +686,103 @@ const TOOLS: Tool[] = [
       required: ['name'],
     },
   },
+
+  // =========================================================================
+  // Ephemeral Context Tools
+  // =========================================================================
+  {
+    name: 'xache_ephemeral_create_session',
+    description:
+      'Create a new ephemeral working memory session. Returns a session key for storing temporary data in slots (conversation, facts, tasks, cache, scratch, handoff). Sessions auto-expire after TTL.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        ttlSeconds: {
+          type: 'number',
+          description: 'Session time-to-live in seconds (default: 3600)',
+        },
+        maxWindows: {
+          type: 'number',
+          description: 'Maximum renewal windows (default: 5)',
+        },
+      },
+      required: [],
+    },
+  },
+  {
+    name: 'xache_ephemeral_write_slot',
+    description:
+      'Write data to an ephemeral session slot. Use slots to organize working memory: conversation (dialog history), facts (extracted facts), tasks (current tasks), cache (temporary data), scratch (working notes), handoff (data for next agent).',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        sessionKey: {
+          type: 'string',
+          description: 'The ephemeral session key',
+        },
+        slot: {
+          type: 'string',
+          enum: ['conversation', 'facts', 'tasks', 'cache', 'scratch', 'handoff'],
+          description: 'Slot name',
+        },
+        data: {
+          type: 'object',
+          description: 'Data to write to the slot',
+        },
+      },
+      required: ['sessionKey', 'slot', 'data'],
+    },
+  },
+  {
+    name: 'xache_ephemeral_read_slot',
+    description:
+      'Read data from an ephemeral session slot.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        sessionKey: {
+          type: 'string',
+          description: 'The ephemeral session key',
+        },
+        slot: {
+          type: 'string',
+          enum: ['conversation', 'facts', 'tasks', 'cache', 'scratch', 'handoff'],
+          description: 'Slot name',
+        },
+      },
+      required: ['sessionKey', 'slot'],
+    },
+  },
+  {
+    name: 'xache_ephemeral_promote',
+    description:
+      'Promote an ephemeral session to persistent memory. Extracts valuable data from all slots and stores as permanent memories with cryptographic receipts.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        sessionKey: {
+          type: 'string',
+          description: 'The ephemeral session key to promote',
+        },
+      },
+      required: ['sessionKey'],
+    },
+  },
+  {
+    name: 'xache_ephemeral_status',
+    description:
+      'Get the status and details of an ephemeral session. Shows active slots, total size, TTL, window count, and cumulative cost.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        sessionKey: {
+          type: 'string',
+          description: 'The ephemeral session key',
+        },
+      },
+      required: ['sessionKey'],
+    },
+  },
 ];
 
 // =============================================================================
@@ -1430,6 +1527,84 @@ async function handleGraphEntityHistory(
 }
 
 // =============================================================================
+// Ephemeral Context Handlers
+// =============================================================================
+
+async function handleEphemeralCreateSession(
+  client: XacheClient,
+  args: { ttlSeconds?: number; maxWindows?: number }
+): Promise<string> {
+  const session = await client.ephemeral.createSession({
+    ttlSeconds: args.ttlSeconds,
+    maxWindows: args.maxWindows,
+  });
+
+  return [
+    `Created ephemeral session.`,
+    `Session Key: ${session.sessionKey}`,
+    `Status: ${session.status}`,
+    `TTL: ${session.ttlSeconds}s`,
+    `Window: ${session.window}/${session.maxWindows}`,
+    `Expires: ${session.expiresAt}`,
+  ].join('\n');
+}
+
+async function handleEphemeralWriteSlot(
+  client: XacheClient,
+  args: { sessionKey: string; slot: string; data: Record<string, unknown> }
+): Promise<string> {
+  await client.ephemeral.writeSlot(args.sessionKey, args.slot as any, args.data);
+  return `Wrote data to slot "${args.slot}" in session ${args.sessionKey.substring(0, 12)}...`;
+}
+
+async function handleEphemeralReadSlot(
+  client: XacheClient,
+  args: { sessionKey: string; slot: string }
+): Promise<string> {
+  const data = await client.ephemeral.readSlot(args.sessionKey, args.slot as any);
+  return `Slot "${args.slot}" data:\n${JSON.stringify(data, null, 2)}`;
+}
+
+async function handleEphemeralPromote(
+  client: XacheClient,
+  args: { sessionKey: string }
+): Promise<string> {
+  const result = await client.ephemeral.promoteSession(args.sessionKey);
+
+  let output = `Promoted session ${args.sessionKey.substring(0, 12)}...\n`;
+  output += `Memories created: ${result.memoriesCreated}\n`;
+  if (result.memoryIds.length > 0) {
+    output += `Memory IDs: ${result.memoryIds.join(', ')}\n`;
+  }
+  if (result.receiptId) {
+    output += `Receipt: ${result.receiptId}`;
+  }
+  return output;
+}
+
+async function handleEphemeralStatus(
+  client: XacheClient,
+  args: { sessionKey: string }
+): Promise<string> {
+  const session = await client.ephemeral.getSession(args.sessionKey);
+
+  if (!session) {
+    return `Session ${args.sessionKey.substring(0, 12)}... not found.`;
+  }
+
+  return [
+    `Session: ${session.sessionKey.substring(0, 12)}...`,
+    `Status: ${session.status}`,
+    `Window: ${session.window}/${session.maxWindows}`,
+    `TTL: ${session.ttlSeconds}s`,
+    `Expires: ${session.expiresAt}`,
+    `Active Slots: ${session.activeSlots.length > 0 ? session.activeSlots.join(', ') : 'none'}`,
+    `Total Size: ${session.totalSize} bytes`,
+    `Cumulative Cost: $${session.cumulativeCost.toFixed(4)}`,
+  ].join('\n');
+}
+
+// =============================================================================
 // Server Setup
 // =============================================================================
 
@@ -1522,6 +1697,21 @@ async function main(): Promise<void> {
           break;
         case 'xache_graph_entity_history':
           result = await handleGraphEntityHistory(client, args as any);
+          break;
+        case 'xache_ephemeral_create_session':
+          result = await handleEphemeralCreateSession(client, args as any);
+          break;
+        case 'xache_ephemeral_write_slot':
+          result = await handleEphemeralWriteSlot(client, args as any);
+          break;
+        case 'xache_ephemeral_read_slot':
+          result = await handleEphemeralReadSlot(client, args as any);
+          break;
+        case 'xache_ephemeral_promote':
+          result = await handleEphemeralPromote(client, args as any);
+          break;
+        case 'xache_ephemeral_status':
+          result = await handleEphemeralStatus(client, args as any);
           break;
         default:
           throw new Error(`Unknown tool: ${name}`);

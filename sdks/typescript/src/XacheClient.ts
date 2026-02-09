@@ -40,6 +40,7 @@ import { WorkspaceService } from './services/WorkspaceService';
 import { OwnerService } from './services/OwnerService';
 import { WalletService } from './services/WalletService';
 import { GraphService } from './services/GraphService';
+import { EphemeralService } from './services/EphemeralService';
 import { PaymentHandler } from './payment/PaymentHandler';
 
 /**
@@ -97,6 +98,7 @@ export class XacheClient {
   public readonly owner: OwnerService;
   public readonly wallet: WalletService;
   public readonly graph: GraphService;
+  public readonly ephemeral: EphemeralService;
 
   constructor(config: XacheClientConfig) {
     // Validate configuration
@@ -150,6 +152,7 @@ export class XacheClient {
     this.owner = new OwnerService(this);
     this.wallet = new WalletService(this);
     this.graph = new GraphService(this);
+    this.ephemeral = new EphemeralService(this);
 
     if (this.config.debug) {
       console.log('Xache client initialized:', {

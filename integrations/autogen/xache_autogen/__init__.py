@@ -40,10 +40,15 @@ from .functions import (
     graph_merge_entities,
     graph_entity_history,
     extract_memories,
+    ephemeral_create_session,
+    ephemeral_write_slot,
+    ephemeral_read_slot,
+    ephemeral_promote,
+    ephemeral_status,
 )
 from .memory import XacheConversationMemory
 
-__version__ = "0.2.0"
+__version__ = "0.4.0"
 __all__ = [
     # Agents
     "XacheMemoryAgent",
@@ -66,6 +71,12 @@ __all__ = [
     "graph_entity_history",
     # Extraction
     "extract_memories",
+    # Ephemeral Context
+    "ephemeral_create_session",
+    "ephemeral_write_slot",
+    "ephemeral_read_slot",
+    "ephemeral_promote",
+    "ephemeral_status",
     # Memory
     "XacheConversationMemory",
 ]

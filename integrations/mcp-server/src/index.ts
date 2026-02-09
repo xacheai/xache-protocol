@@ -48,7 +48,13 @@ import {
   ListToolsRequestSchema,
   Tool,
 } from '@modelcontextprotocol/sdk/types.js';
-import { XacheClient, type DID, type LLMProvider, type LLMApiFormat } from '@xache/sdk';
+import {
+  XacheClient,
+  type DID,
+  type LLMProvider,
+  type LLMApiFormat,
+  type SubjectContext,
+} from '@xache/sdk';
 import crypto from 'crypto';
 
 // =============================================================================
@@ -87,75 +93,12 @@ function getDID(): DID {
 }
 
 function validateConfig(): void {
-  // Required: wallet address
   if (!config.walletAddress) {
     console.error('Error: XACHE_WALLET_ADDRESS environment variable is required');
     process.exit(1);
   }
-
-  // Required: private key
   if (!config.privateKey) {
     console.error('Error: XACHE_PRIVATE_KEY environment variable is required');
-    process.exit(1);
-  }
-
-  // Validate chain
-  if (!['base', 'solana'].includes(config.chain)) {
-    console.error('Error: XACHE_CHAIN must be "base" or "solana"');
-    process.exit(1);
-  }
-
-  // Validate wallet address format based on chain
-  if (config.chain === 'solana') {
-    // Solana: base58 (32-44 chars)
-    if (!/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(config.walletAddress)) {
-      console.error('Error: Invalid Solana wallet address format');
-      process.exit(1);
-    }
-  } else {
-    // EVM: 0x + 40 hex chars
-    if (!/^0x[a-fA-F0-9]{40}$/.test(config.walletAddress)) {
-      console.error('Error: Invalid EVM wallet address format (expected 0x + 40 hex chars)');
-      process.exit(1);
-    }
-  }
-
-  // Validate private key format (hex string)
-  const cleanKey = config.privateKey.startsWith('0x')
-    ? config.privateKey.slice(2)
-    : config.privateKey;
-  if (!/^[a-fA-F0-9]{64}$/.test(cleanKey) && !/^[a-fA-F0-9]{128}$/.test(cleanKey)) {
-    console.error('Error: XACHE_PRIVATE_KEY must be a 64 or 128 character hex string');
-    process.exit(1);
-  }
-
-  // Validate API URL format
-  try {
-    new URL(config.apiUrl);
-  } catch {
-    console.error('Error: XACHE_API_URL is not a valid URL');
-    process.exit(1);
-  }
-
-  // Validate LLM provider if specified
-  if (config.llmProvider && !SUPPORTED_PROVIDERS.includes(config.llmProvider)) {
-    console.error(`Error: XACHE_LLM_PROVIDER must be one of: ${SUPPORTED_PROVIDERS.join(', ')}`);
-    process.exit(1);
-  }
-
-  // Validate LLM endpoint URL if specified
-  if (config.llmEndpoint) {
-    try {
-      new URL(config.llmEndpoint);
-    } catch {
-      console.error('Error: XACHE_LLM_ENDPOINT is not a valid URL');
-      process.exit(1);
-    }
-  }
-
-  // Validate LLM format
-  if (!['openai', 'anthropic', 'cohere'].includes(config.llmFormat)) {
-    console.error('Error: XACHE_LLM_FORMAT must be "openai", "anthropic", or "cohere"');
     process.exit(1);
   }
 }
@@ -166,6 +109,21 @@ function validateConfig(): void {
 
 function hashPattern(pattern: string): string {
   return crypto.createHash('sha256').update(pattern).digest('hex');
+}
+
+function getDefaultSubjectContext(): SubjectContext {
+  return { scope: 'GLOBAL' };
+}
+
+function buildSubjectContext(args: Record<string, unknown>): SubjectContext {
+  const subject = args.subject as Record<string, unknown> | undefined;
+  if (!subject) return getDefaultSubjectContext();
+  return {
+    scope: (subject.scope as SubjectContext['scope']) || 'GLOBAL',
+    subjectId: subject.subjectId as string | undefined,
+    segmentId: subject.segmentId as string | undefined,
+    tenantId: subject.tenantId as string | undefined,
+  };
 }
 
 // =============================================================================
@@ -268,6 +226,16 @@ const TOOLS: Tool[] = [
           enum: ['hot', 'warm', 'cold'],
           description: 'Storage tier (default: warm)',
         },
+        subject: {
+          type: 'object',
+          description: 'Optional subject context for memory scoping',
+          properties: {
+            scope: { type: 'string', enum: ['SUBJECT', 'SEGMENT', 'GLOBAL'], description: 'Memory scope (default: GLOBAL)' },
+            subjectId: { type: 'string', description: 'HMAC-derived subject ID (64 hex chars)' },
+            segmentId: { type: 'string', description: 'Segment identifier' },
+            tenantId: { type: 'string', description: 'Tenant identifier' },
+          },
+        },
       },
       required: ['data'],
     },
@@ -281,6 +249,16 @@ const TOOLS: Tool[] = [
         storageKey: {
           type: 'string',
           description: 'The storage key from when the memory was stored',
+        },
+        subject: {
+          type: 'object',
+          description: 'Optional subject context for memory scoping',
+          properties: {
+            scope: { type: 'string', enum: ['SUBJECT', 'SEGMENT', 'GLOBAL'], description: 'Memory scope (default: GLOBAL)' },
+            subjectId: { type: 'string', description: 'HMAC-derived subject ID (64 hex chars)' },
+            segmentId: { type: 'string', description: 'Segment identifier' },
+            tenantId: { type: 'string', description: 'Tenant identifier' },
+          },
         },
       },
       required: ['storageKey'],
@@ -299,6 +277,16 @@ const TOOLS: Tool[] = [
         limit: {
           type: 'number',
           description: 'Max results (default 20)',
+        },
+        subject: {
+          type: 'object',
+          description: 'Optional subject context for memory scoping',
+          properties: {
+            scope: { type: 'string', enum: ['SUBJECT', 'SEGMENT', 'GLOBAL'], description: 'Memory scope (default: GLOBAL)' },
+            subjectId: { type: 'string', description: 'HMAC-derived subject ID (64 hex chars)' },
+            segmentId: { type: 'string', description: 'Segment identifier' },
+            tenantId: { type: 'string', description: 'Tenant identifier' },
+          },
         },
       },
       required: [],
@@ -402,6 +390,397 @@ const TOOLS: Tool[] = [
         },
       },
       required: ['trace', 'domain'],
+    },
+  },
+
+  // =========================================================================
+  // Knowledge Graph Tools
+  // =========================================================================
+  {
+    name: 'xache_graph_extract',
+    description:
+      'Extract entities and relationships from an agent trace into the knowledge graph. Uses LLM to identify people, organizations, tools, concepts, and their relationships. Automatically stores results.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        trace: {
+          type: 'string',
+          description: 'The agent trace/conversation to extract entities and relationships from',
+        },
+        domain: {
+          type: 'string',
+          description: 'Domain hint for better extraction (e.g., "customer-support", "engineering")',
+        },
+        mode: {
+          type: 'string',
+          enum: ['api-key', 'endpoint', 'xache-managed'],
+          description: 'LLM mode (default: auto-detected from env vars)',
+        },
+        provider: {
+          type: 'string',
+          enum: ['anthropic', 'openai', 'google', 'mistral', 'groq', 'together', 'fireworks', 'cohere', 'xai', 'deepseek'],
+          description: 'LLM provider for api-key mode (default: anthropic)',
+        },
+        model: {
+          type: 'string',
+          description: 'Specific model to use (optional)',
+        },
+        confidenceThreshold: {
+          type: 'number',
+          description: 'Minimum confidence for extraction (0.0-1.0, default: 0.7)',
+        },
+        maxEntities: {
+          type: 'number',
+          description: 'Maximum entities to extract (default: provider limit)',
+        },
+        subject: {
+          type: 'object',
+          description: 'Subject context for graph scoping',
+          properties: {
+            scope: { type: 'string', enum: ['SUBJECT', 'SEGMENT', 'GLOBAL'] },
+            subjectId: { type: 'string' },
+            segmentId: { type: 'string' },
+            tenantId: { type: 'string' },
+          },
+        },
+      },
+      required: ['trace'],
+    },
+  },
+  {
+    name: 'xache_graph_load',
+    description:
+      'Load the full knowledge graph. Returns all entities and relationships. Optionally filter by entity type or load a historical snapshot.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        entityTypes: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Filter to specific entity types (e.g., ["person", "organization"])',
+        },
+        validAt: {
+          type: 'string',
+          description: 'Load graph as it existed at this time (ISO8601 date string)',
+        },
+        subject: {
+          type: 'object',
+          description: 'Subject context for graph scoping',
+          properties: {
+            scope: { type: 'string', enum: ['SUBJECT', 'SEGMENT', 'GLOBAL'] },
+            subjectId: { type: 'string' },
+            segmentId: { type: 'string' },
+            tenantId: { type: 'string' },
+          },
+        },
+      },
+      required: [],
+    },
+  },
+  {
+    name: 'xache_graph_query',
+    description:
+      'Query a subgraph around a specific entity. Returns the entity and all connected entities/relationships within the specified depth.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        startEntity: {
+          type: 'string',
+          description: 'Name of the starting entity (e.g., "John Smith", "Acme Corp")',
+        },
+        depth: {
+          type: 'number',
+          description: 'Number of hops from start entity (default: 2)',
+        },
+        relationshipTypes: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Filter to specific relationship types (e.g., ["works_at", "manages"])',
+        },
+        validAt: {
+          type: 'string',
+          description: 'Query as of this point in time (ISO8601)',
+        },
+        subject: {
+          type: 'object',
+          description: 'Subject context for graph scoping',
+          properties: {
+            scope: { type: 'string', enum: ['SUBJECT', 'SEGMENT', 'GLOBAL'] },
+            subjectId: { type: 'string' },
+            segmentId: { type: 'string' },
+            tenantId: { type: 'string' },
+          },
+        },
+      },
+      required: ['startEntity'],
+    },
+  },
+  {
+    name: 'xache_graph_ask',
+    description:
+      'Ask a natural language question about the knowledge graph. Uses LLM to analyze the graph and generate an answer with source citations.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        question: {
+          type: 'string',
+          description: 'Natural language question (e.g., "Who manages the engineering team?")',
+        },
+        mode: {
+          type: 'string',
+          enum: ['api-key', 'endpoint', 'xache-managed'],
+          description: 'LLM mode (default: auto-detected from env vars)',
+        },
+        provider: {
+          type: 'string',
+          enum: ['anthropic', 'openai', 'google', 'mistral', 'groq', 'together', 'fireworks', 'cohere', 'xai', 'deepseek'],
+          description: 'LLM provider for api-key mode (default: anthropic)',
+        },
+        model: {
+          type: 'string',
+          description: 'Specific model to use (optional)',
+        },
+        subject: {
+          type: 'object',
+          description: 'Subject context for graph scoping',
+          properties: {
+            scope: { type: 'string', enum: ['SUBJECT', 'SEGMENT', 'GLOBAL'] },
+            subjectId: { type: 'string' },
+            segmentId: { type: 'string' },
+            tenantId: { type: 'string' },
+          },
+        },
+      },
+      required: ['question'],
+    },
+  },
+  {
+    name: 'xache_graph_add_entity',
+    description:
+      'Manually add an entity to the knowledge graph. Use when you want to explicitly create a person, organization, tool, concept, etc.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        name: {
+          type: 'string',
+          description: 'Entity display name (e.g., "John Smith", "React")',
+        },
+        type: {
+          type: 'string',
+          description: 'Entity type: "person", "organization", "tool", "concept", "location", "event", "product", "project", or custom',
+        },
+        summary: {
+          type: 'string',
+          description: 'Brief description of the entity',
+        },
+        attributes: {
+          type: 'object',
+          description: 'Arbitrary key-value attributes',
+        },
+        subject: {
+          type: 'object',
+          description: 'Subject context for graph scoping',
+          properties: {
+            scope: { type: 'string', enum: ['SUBJECT', 'SEGMENT', 'GLOBAL'] },
+            subjectId: { type: 'string' },
+            segmentId: { type: 'string' },
+            tenantId: { type: 'string' },
+          },
+        },
+      },
+      required: ['name', 'type'],
+    },
+  },
+  {
+    name: 'xache_graph_add_relationship',
+    description:
+      'Create a relationship between two entities in the knowledge graph. Both entities must already exist.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        fromEntity: {
+          type: 'string',
+          description: 'Source entity name',
+        },
+        toEntity: {
+          type: 'string',
+          description: 'Target entity name',
+        },
+        type: {
+          type: 'string',
+          description: 'Relationship type: "works_at", "knows", "uses", "manages", "reports_to", "part_of", "created", "owns", "located_in", "related_to", or custom',
+        },
+        description: {
+          type: 'string',
+          description: 'Human-readable description of the relationship',
+        },
+        attributes: {
+          type: 'object',
+          description: 'Arbitrary key-value attributes',
+        },
+        subject: {
+          type: 'object',
+          description: 'Subject context for graph scoping',
+          properties: {
+            scope: { type: 'string', enum: ['SUBJECT', 'SEGMENT', 'GLOBAL'] },
+            subjectId: { type: 'string' },
+            segmentId: { type: 'string' },
+            tenantId: { type: 'string' },
+          },
+        },
+      },
+      required: ['fromEntity', 'toEntity', 'type'],
+    },
+  },
+  {
+    name: 'xache_graph_merge_entities',
+    description:
+      'Merge two entities into one. The source entity is superseded and the target entity is updated with merged attributes. Relationships are transferred.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        sourceName: {
+          type: 'string',
+          description: 'Entity to merge FROM (will be superseded)',
+        },
+        targetName: {
+          type: 'string',
+          description: 'Entity to merge INTO (will be updated)',
+        },
+        subject: {
+          type: 'object',
+          description: 'Subject context for graph scoping',
+          properties: {
+            scope: { type: 'string', enum: ['SUBJECT', 'SEGMENT', 'GLOBAL'] },
+            subjectId: { type: 'string' },
+            segmentId: { type: 'string' },
+            tenantId: { type: 'string' },
+          },
+        },
+      },
+      required: ['sourceName', 'targetName'],
+    },
+  },
+  {
+    name: 'xache_graph_entity_history',
+    description:
+      'Get the full version history of an entity. Shows how the entity has changed over time, including all temporal versions.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        name: {
+          type: 'string',
+          description: 'Entity name to look up history for',
+        },
+        subject: {
+          type: 'object',
+          description: 'Subject context for graph scoping',
+          properties: {
+            scope: { type: 'string', enum: ['SUBJECT', 'SEGMENT', 'GLOBAL'] },
+            subjectId: { type: 'string' },
+            segmentId: { type: 'string' },
+            tenantId: { type: 'string' },
+          },
+        },
+      },
+      required: ['name'],
+    },
+  },
+
+  // =========================================================================
+  // Ephemeral Context Tools
+  // =========================================================================
+  {
+    name: 'xache_ephemeral_create_session',
+    description:
+      'Create a new ephemeral working memory session. Returns a session key for storing temporary data in slots (conversation, facts, tasks, cache, scratch, handoff). Sessions auto-expire after TTL.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        ttlSeconds: {
+          type: 'number',
+          description: 'Session time-to-live in seconds (default: 3600)',
+        },
+        maxWindows: {
+          type: 'number',
+          description: 'Maximum renewal windows (default: 5)',
+        },
+      },
+      required: [],
+    },
+  },
+  {
+    name: 'xache_ephemeral_write_slot',
+    description:
+      'Write data to an ephemeral session slot. Use slots to organize working memory: conversation (dialog history), facts (extracted facts), tasks (current tasks), cache (temporary data), scratch (working notes), handoff (data for next agent).',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        sessionKey: {
+          type: 'string',
+          description: 'The ephemeral session key',
+        },
+        slot: {
+          type: 'string',
+          enum: ['conversation', 'facts', 'tasks', 'cache', 'scratch', 'handoff'],
+          description: 'Slot name',
+        },
+        data: {
+          type: 'object',
+          description: 'Data to write to the slot',
+        },
+      },
+      required: ['sessionKey', 'slot', 'data'],
+    },
+  },
+  {
+    name: 'xache_ephemeral_read_slot',
+    description:
+      'Read data from an ephemeral session slot.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        sessionKey: {
+          type: 'string',
+          description: 'The ephemeral session key',
+        },
+        slot: {
+          type: 'string',
+          enum: ['conversation', 'facts', 'tasks', 'cache', 'scratch', 'handoff'],
+          description: 'Slot name',
+        },
+      },
+      required: ['sessionKey', 'slot'],
+    },
+  },
+  {
+    name: 'xache_ephemeral_promote',
+    description:
+      'Promote an ephemeral session to persistent memory. Extracts valuable data from all slots and stores as permanent memories with cryptographic receipts.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        sessionKey: {
+          type: 'string',
+          description: 'The ephemeral session key to promote',
+        },
+      },
+      required: ['sessionKey'],
+    },
+  },
+  {
+    name: 'xache_ephemeral_status',
+    description:
+      'Get the status and details of an ephemeral session. Shows active slots, total size, TTL, window count, and cumulative cost.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        sessionKey: {
+          type: 'string',
+          description: 'The ephemeral session key',
+        },
+      },
+      required: ['sessionKey'],
     },
   },
 ];
@@ -807,6 +1186,425 @@ async function handleExtractAndContribute(
 }
 
 // =============================================================================
+// Graph Tool Handlers
+// =============================================================================
+
+/**
+ * Build LLM config from args + env vars (shared by graph extract/ask and extraction tools)
+ */
+function buildLLMConfig(args: {
+  mode?: 'api-key' | 'endpoint' | 'xache-managed';
+  provider?: LLMProvider;
+  model?: string;
+}): { llmConfig: Record<string, unknown>; modeDescription: string } {
+  let mode = args.mode;
+  if (!mode) {
+    if (config.llmEndpoint) mode = 'endpoint';
+    else if (config.llmApiKey && config.llmProvider) mode = 'api-key';
+    else mode = 'xache-managed';
+  }
+
+  const provider = args.provider || config.llmProvider || 'anthropic';
+  const model = args.model || config.llmModel || undefined;
+
+  if (mode === 'api-key') {
+    if (!config.llmApiKey) {
+      throw new Error('api-key mode requires XACHE_LLM_API_KEY environment variable.');
+    }
+    if (!SUPPORTED_PROVIDERS.includes(provider)) {
+      throw new Error(`Unsupported provider: ${provider}. Supported: ${SUPPORTED_PROVIDERS.join(', ')}`);
+    }
+    return {
+      llmConfig: { type: 'api-key' as const, provider, apiKey: config.llmApiKey, model },
+      modeDescription: `api-key (${provider})`,
+    };
+  } else if (mode === 'endpoint') {
+    if (!config.llmEndpoint) {
+      throw new Error('endpoint mode requires XACHE_LLM_ENDPOINT environment variable.');
+    }
+    return {
+      llmConfig: {
+        type: 'endpoint' as const,
+        url: config.llmEndpoint,
+        authToken: config.llmAuthToken || undefined,
+        format: config.llmFormat,
+        model,
+      },
+      modeDescription: `endpoint (${config.llmEndpoint.substring(0, 40)}...)`,
+    };
+  } else {
+    return {
+      llmConfig: {
+        type: 'xache-managed' as const,
+        provider: provider === 'anthropic' || provider === 'openai' ? provider : 'anthropic',
+        model,
+      },
+      modeDescription: `xache-managed (${provider})`,
+    };
+  }
+}
+
+async function handleGraphExtract(
+  client: XacheClient,
+  args: {
+    trace: string;
+    domain?: string;
+    mode?: 'api-key' | 'endpoint' | 'xache-managed';
+    provider?: LLMProvider;
+    model?: string;
+    confidenceThreshold?: number;
+    maxEntities?: number;
+    subject?: Record<string, unknown>;
+  }
+): Promise<string> {
+  const { llmConfig, modeDescription } = buildLLMConfig(args);
+  const subject = buildSubjectContext(args as Record<string, unknown>);
+
+  const result = await client.graph.extract({
+    trace: args.trace,
+    llmConfig: llmConfig as any,
+    subject,
+    options: {
+      contextHint: args.domain,
+      confidenceThreshold: args.confidenceThreshold ?? 0.7,
+      maxEntities: args.maxEntities,
+    },
+  });
+
+  const entities = result.entities || [];
+  const relationships = result.relationships || [];
+
+  if (entities.length === 0 && relationships.length === 0) {
+    return 'No entities or relationships extracted from trace.';
+  }
+
+  let output = `Extracted ${entities.length} entities and ${relationships.length} relationships.\n`;
+  output += `Mode: ${modeDescription}\n`;
+
+  if (entities.length > 0) {
+    output += '\nEntities:\n';
+    for (const e of entities) {
+      output += `  • ${e.name} [${e.type}]${e.isNew ? ' (new)' : ''}${e.updated ? ' (updated)' : ''}\n`;
+    }
+  }
+
+  if (relationships.length > 0) {
+    output += '\nRelationships:\n';
+    for (const r of relationships) {
+      output += `  • ${r.from} → ${r.type} → ${r.to}${r.isNew ? ' (new)' : ''}\n`;
+    }
+  }
+
+  if (result.temporalUpdates && result.temporalUpdates.length > 0) {
+    output += `\n${result.temporalUpdates.length} temporal update(s) detected.`;
+  }
+
+  output += `\nStored: ${result.stored} items`;
+  return output;
+}
+
+async function handleGraphLoad(
+  client: XacheClient,
+  args: {
+    entityTypes?: string[];
+    validAt?: string;
+    subject?: Record<string, unknown>;
+  }
+): Promise<string> {
+  const subject = buildSubjectContext(args as Record<string, unknown>);
+
+  const graph = await client.graph.load({
+    subject,
+    entityTypes: args.entityTypes,
+    validAt: args.validAt,
+  });
+
+  const data = graph.toJSON();
+  const entities = data.entities || [];
+  const relationships = data.relationships || [];
+
+  if (entities.length === 0) {
+    return 'Knowledge graph is empty.';
+  }
+
+  let output = `Knowledge graph: ${entities.length} entities, ${relationships.length} relationships\n`;
+
+  output += '\nEntities:\n';
+  for (const e of entities) {
+    output += `  • ${e.name} [${e.type}]`;
+    if (e.summary) output += ` — ${e.summary.substring(0, 80)}`;
+    output += '\n';
+  }
+
+  if (relationships.length > 0) {
+    output += '\nRelationships:\n';
+    for (const r of relationships) {
+      output += `  • ${r.fromKey.substring(0, 8)}... → ${r.type} → ${r.toKey.substring(0, 8)}...`;
+      if (r.description) output += ` (${r.description.substring(0, 60)})`;
+      output += '\n';
+    }
+  }
+
+  return output;
+}
+
+async function handleGraphQuery(
+  client: XacheClient,
+  args: {
+    startEntity: string;
+    depth?: number;
+    relationshipTypes?: string[];
+    validAt?: string;
+    subject?: Record<string, unknown>;
+  }
+): Promise<string> {
+  const subject = buildSubjectContext(args as Record<string, unknown>);
+
+  const graph = await client.graph.query({
+    subject,
+    startEntity: args.startEntity,
+    depth: args.depth ?? 2,
+    relationshipTypes: args.relationshipTypes,
+    validAt: args.validAt,
+  });
+
+  const data = graph.toJSON();
+  const entities = data.entities || [];
+  const relationships = data.relationships || [];
+
+  if (entities.length === 0) {
+    return `No entities found connected to "${args.startEntity}".`;
+  }
+
+  let output = `Subgraph around "${args.startEntity}": ${entities.length} entities, ${relationships.length} relationships\n`;
+
+  output += '\nEntities:\n';
+  for (const e of entities) {
+    output += `  • ${e.name} [${e.type}]`;
+    if (e.summary) output += ` — ${e.summary.substring(0, 80)}`;
+    output += '\n';
+  }
+
+  if (relationships.length > 0) {
+    output += '\nRelationships:\n';
+    for (const r of relationships) {
+      output += `  • ${r.fromKey.substring(0, 8)}... → ${r.type} → ${r.toKey.substring(0, 8)}...`;
+      if (r.description) output += ` (${r.description.substring(0, 60)})`;
+      output += '\n';
+    }
+  }
+
+  return output;
+}
+
+async function handleGraphAsk(
+  client: XacheClient,
+  args: {
+    question: string;
+    mode?: 'api-key' | 'endpoint' | 'xache-managed';
+    provider?: LLMProvider;
+    model?: string;
+    subject?: Record<string, unknown>;
+  }
+): Promise<string> {
+  const { llmConfig, modeDescription } = buildLLMConfig(args);
+  const subject = buildSubjectContext(args as Record<string, unknown>);
+
+  const answer = await client.graph.ask({
+    subject,
+    question: args.question,
+    llmConfig: llmConfig as any,
+  });
+
+  let output = `Answer: ${answer.answer}\n`;
+  output += `Confidence: ${(answer.confidence * 100).toFixed(0)}%\n`;
+  output += `Mode: ${modeDescription}\n`;
+
+  if (answer.sources && answer.sources.length > 0) {
+    output += '\nSources:\n';
+    for (const s of answer.sources) {
+      output += `  • ${s.name} [${s.type}]\n`;
+    }
+  }
+
+  return output;
+}
+
+async function handleGraphAddEntity(
+  client: XacheClient,
+  args: {
+    name: string;
+    type: string;
+    summary?: string;
+    attributes?: Record<string, unknown>;
+    subject?: Record<string, unknown>;
+  }
+): Promise<string> {
+  const subject = buildSubjectContext(args as Record<string, unknown>);
+
+  const entity = await client.graph.addEntity({
+    subject,
+    name: args.name,
+    type: args.type,
+    summary: args.summary,
+    attributes: args.attributes,
+  });
+
+  return `Created entity "${entity.name}" [${entity.type}]\nKey: ${entity.key}\nStorage Key: ${entity.storageKey}`;
+}
+
+async function handleGraphAddRelationship(
+  client: XacheClient,
+  args: {
+    fromEntity: string;
+    toEntity: string;
+    type: string;
+    description?: string;
+    attributes?: Record<string, unknown>;
+    subject?: Record<string, unknown>;
+  }
+): Promise<string> {
+  const subject = buildSubjectContext(args as Record<string, unknown>);
+
+  const rel = await client.graph.addRelationship({
+    subject,
+    from: args.fromEntity,
+    to: args.toEntity,
+    type: args.type,
+    description: args.description,
+    attributes: args.attributes,
+  });
+
+  return `Created relationship: ${args.fromEntity} → ${rel.type} → ${args.toEntity}\nStorage Key: ${rel.storageKey}`;
+}
+
+async function handleGraphMergeEntities(
+  client: XacheClient,
+  args: {
+    sourceName: string;
+    targetName: string;
+    subject?: Record<string, unknown>;
+  }
+): Promise<string> {
+  const subject = buildSubjectContext(args as Record<string, unknown>);
+
+  const merged = await client.graph.mergeEntities({
+    subject,
+    sourceName: args.sourceName,
+    targetName: args.targetName,
+  });
+
+  return `Merged "${args.sourceName}" into "${args.targetName}".\nResult: ${merged.name} [${merged.type}] (v${merged.version})\nKey: ${merged.key}`;
+}
+
+async function handleGraphEntityHistory(
+  client: XacheClient,
+  args: {
+    name: string;
+    subject?: Record<string, unknown>;
+  }
+): Promise<string> {
+  const subject = buildSubjectContext(args as Record<string, unknown>);
+
+  const versions = await client.graph.getEntityHistory({
+    subject,
+    name: args.name,
+  });
+
+  if (versions.length === 0) {
+    return `No history found for entity "${args.name}".`;
+  }
+
+  let output = `History for "${args.name}": ${versions.length} version(s)\n`;
+
+  for (const v of versions) {
+    output += `\n  v${v.version} — ${v.name} [${v.type}]`;
+    if (v.summary) output += `\n    Summary: ${v.summary.substring(0, 100)}`;
+    output += `\n    Valid: ${v.validFrom}${v.validTo ? ` → ${v.validTo}` : ' → current'}`;
+  }
+
+  return output;
+}
+
+// =============================================================================
+// Ephemeral Context Handlers
+// =============================================================================
+
+async function handleEphemeralCreateSession(
+  client: XacheClient,
+  args: { ttlSeconds?: number; maxWindows?: number }
+): Promise<string> {
+  const session = await client.ephemeral.createSession({
+    ttlSeconds: args.ttlSeconds,
+    maxWindows: args.maxWindows,
+  });
+
+  return [
+    `Created ephemeral session.`,
+    `Session Key: ${session.sessionKey}`,
+    `Status: ${session.status}`,
+    `TTL: ${session.ttlSeconds}s`,
+    `Window: ${session.window}/${session.maxWindows}`,
+    `Expires: ${session.expiresAt}`,
+  ].join('\n');
+}
+
+async function handleEphemeralWriteSlot(
+  client: XacheClient,
+  args: { sessionKey: string; slot: string; data: Record<string, unknown> }
+): Promise<string> {
+  await client.ephemeral.writeSlot(args.sessionKey, args.slot as any, args.data);
+  return `Wrote data to slot "${args.slot}" in session ${args.sessionKey.substring(0, 12)}...`;
+}
+
+async function handleEphemeralReadSlot(
+  client: XacheClient,
+  args: { sessionKey: string; slot: string }
+): Promise<string> {
+  const data = await client.ephemeral.readSlot(args.sessionKey, args.slot as any);
+  return `Slot "${args.slot}" data:\n${JSON.stringify(data, null, 2)}`;
+}
+
+async function handleEphemeralPromote(
+  client: XacheClient,
+  args: { sessionKey: string }
+): Promise<string> {
+  const result = await client.ephemeral.promoteSession(args.sessionKey);
+
+  let output = `Promoted session ${args.sessionKey.substring(0, 12)}...\n`;
+  output += `Memories created: ${result.memoriesCreated}\n`;
+  if (result.memoryIds.length > 0) {
+    output += `Memory IDs: ${result.memoryIds.join(', ')}\n`;
+  }
+  if (result.receiptId) {
+    output += `Receipt: ${result.receiptId}`;
+  }
+  return output;
+}
+
+async function handleEphemeralStatus(
+  client: XacheClient,
+  args: { sessionKey: string }
+): Promise<string> {
+  const session = await client.ephemeral.getSession(args.sessionKey);
+
+  if (!session) {
+    return `Session ${args.sessionKey.substring(0, 12)}... not found.`;
+  }
+
+  return [
+    `Session: ${session.sessionKey.substring(0, 12)}...`,
+    `Status: ${session.status}`,
+    `Window: ${session.window}/${session.maxWindows}`,
+    `TTL: ${session.ttlSeconds}s`,
+    `Expires: ${session.expiresAt}`,
+    `Active Slots: ${session.activeSlots.length > 0 ? session.activeSlots.join(', ') : 'none'}`,
+    `Total Size: ${session.totalSize} bytes`,
+    `Cumulative Cost: $${session.cumulativeCost.toFixed(4)}`,
+  ].join('\n');
+}
+
+// =============================================================================
 // Server Setup
 // =============================================================================
 
@@ -816,7 +1614,7 @@ async function main(): Promise<void> {
   const server = new Server(
     {
       name: 'xache-mcp-server',
-      version: '0.2.0',
+      version: '0.3.0',
     },
     {
       capabilities: {
@@ -875,6 +1673,45 @@ async function main(): Promise<void> {
           break;
         case 'xache_extract_and_contribute':
           result = await handleExtractAndContribute(client, args as any);
+          break;
+        case 'xache_graph_extract':
+          result = await handleGraphExtract(client, args as any);
+          break;
+        case 'xache_graph_load':
+          result = await handleGraphLoad(client, args as any);
+          break;
+        case 'xache_graph_query':
+          result = await handleGraphQuery(client, args as any);
+          break;
+        case 'xache_graph_ask':
+          result = await handleGraphAsk(client, args as any);
+          break;
+        case 'xache_graph_add_entity':
+          result = await handleGraphAddEntity(client, args as any);
+          break;
+        case 'xache_graph_add_relationship':
+          result = await handleGraphAddRelationship(client, args as any);
+          break;
+        case 'xache_graph_merge_entities':
+          result = await handleGraphMergeEntities(client, args as any);
+          break;
+        case 'xache_graph_entity_history':
+          result = await handleGraphEntityHistory(client, args as any);
+          break;
+        case 'xache_ephemeral_create_session':
+          result = await handleEphemeralCreateSession(client, args as any);
+          break;
+        case 'xache_ephemeral_write_slot':
+          result = await handleEphemeralWriteSlot(client, args as any);
+          break;
+        case 'xache_ephemeral_read_slot':
+          result = await handleEphemeralReadSlot(client, args as any);
+          break;
+        case 'xache_ephemeral_promote':
+          result = await handleEphemeralPromote(client, args as any);
+          break;
+        case 'xache_ephemeral_status':
+          result = await handleEphemeralStatus(client, args as any);
           break;
         default:
           throw new Error(`Unknown tool: ${name}`);

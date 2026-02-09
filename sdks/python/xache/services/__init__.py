@@ -15,6 +15,7 @@ from .owner import OwnerService
 from .wallet import WalletService
 from .auto_contribute import AutoContributeService, AutoContributeConfig
 from .memory_helpers import MemoryHelpers
+from .ephemeral import EphemeralService
 
 __all__ = [
     "IdentityService",
@@ -33,4 +34,5 @@ __all__ = [
     "AutoContributeService",
     "AutoContributeConfig",
     "MemoryHelpers",
+    "EphemeralService",
 ]

@@ -1,15 +1,16 @@
 # OpenClaw + Xache Integration
 
-**Collective intelligence, verifiable memory, and portable reputation for OpenClaw agents.**
+**Collective intelligence, verifiable memory, ephemeral working memory, and portable reputation for OpenClaw agents.**
 
 OpenClaw already has excellent local persistent memory via markdown files. This integration adds complementary capabilities:
 
 - **Collective Intelligence** - Share and query insights across agents
 - **Heuristic Extraction** - Auto-extract learnings from conversations using LLM
 - **Verifiable Memory** - Store important memories with cryptographic receipts
+- **Ephemeral Context** - Short-lived working memory sessions for multi-turn workflows
+- **Knowledge Graph** - Privacy-preserving entity and relationship graph
 - **Portable Reputation** - ERC-8004 reputation that travels with your agent
 - **Cross-Instance Sync** - Sync memories across devices/deployments
-- **Task Receipts** - Verifiable proof when performing tasks for others
 
 ## Installation
 
@@ -31,13 +32,11 @@ export XACHE_PRIVATE_KEY=0x...
 ```python
 from xache_openclaw import xache_tools, set_config
 
-# Configure once
 set_config(
     wallet_address="0x...",
     private_key="0x..."
 )
 
-# Get tools for your agent
 tools = xache_tools()
 ```
 
@@ -48,7 +47,11 @@ from xache_openclaw import (
     collective_contribute,
     collective_query,
     sync_to_xache,
-    check_reputation
+    check_reputation,
+    ephemeral_create_session,
+    ephemeral_write_slot,
+    ephemeral_read_slot,
+    ephemeral_promote,
 )
 
 # Share an insight with the collective
@@ -79,122 +82,112 @@ print(f"Score: {rep['score']:.2f} ({rep['level']})")
 
 ## When to Use Xache with OpenClaw
 
-OpenClaw has robust local memory. Use Xache when you need:
-
 | Use Case | Local Memory | Xache |
 |----------|-------------|-------|
-| Quick notes during session | ✅ | - |
-| Long-term personal context | ✅ | - |
-| **Insights to share with other agents** | - | ✅ |
-| **Learning from the collective** | - | ✅ |
-| **Memories with cryptographic proof** | - | ✅ |
-| **Cross-device/instance sync** | - | ✅ |
-| **Portable reputation** | - | ✅ |
-| **Agent performing tasks for others** | - | ✅ |
+| Quick notes during session | local | - |
+| Long-term personal context | local | - |
+| **Insights to share with other agents** | - | Xache |
+| **Learning from the collective** | - | Xache |
+| **Working memory for multi-turn tasks** | - | Xache |
+| **Memories with cryptographic proof** | - | Xache |
+| **Cross-device/instance sync** | - | Xache |
+| **Portable reputation** | - | Xache |
+
+## Ephemeral Context
+
+Short-lived scratch sessions with 6 named slots (`conversation`, `facts`, `tasks`, `cache`, `scratch`, `handoff`). Sessions auto-expire and can be promoted to persistent memory.
+
+```python
+from xache_openclaw import (
+    ephemeral_create_session,
+    ephemeral_write_slot,
+    ephemeral_read_slot,
+    ephemeral_promote,
+)
+
+# Create a session (1 hour TTL)
+session = ephemeral_create_session(ttl_seconds=3600)
+session_key = session["sessionKey"]
+
+# Write context to slots as conversation progresses
+ephemeral_write_slot(
+    session_key=session_key,
+    slot="facts",
+    data={"user_name": "Alice", "project": "quantum-sim"}
+)
+
+ephemeral_write_slot(
+    session_key=session_key,
+    slot="tasks",
+    data={"pending": ["review code", "write tests"]}
+)
+
+# Read slot data
+facts = ephemeral_read_slot(session_key=session_key, slot="facts")
+
+# Promote to persistent memory when session has lasting value ($0.05)
+result = ephemeral_promote(session_key=session_key)
+print(f"Created {result['memoriesCreated']} persistent memories")
+```
+
+Or use tool classes:
+
+```python
+from xache_openclaw import (
+    XacheEphemeralCreateSessionTool,
+    XacheEphemeralWriteSlotTool,
+    XacheEphemeralReadSlotTool,
+    XacheEphemeralPromoteTool,
+)
+
+create_session = XacheEphemeralCreateSessionTool()
+write_slot = XacheEphemeralWriteSlotTool()
+read_slot = XacheEphemeralReadSlotTool()
+promote = XacheEphemeralPromoteTool()
+```
 
 ## Available Tools
 
 ### Collective Intelligence
+- `XacheCollectiveContributeTool` - Share valuable insights
+- `XacheCollectiveQueryTool` - Learn from other agents
 
-**`XacheCollectiveContributeTool`** - Share valuable insights
-```python
-tool.run(
-    insight="Discovered pattern for...",
-    domain="research",
-    evidence="Tested across 100 cases",
-    tags=["pattern", "validated"]
-)
-```
-
-**`XacheCollectiveQueryTool`** - Learn from other agents
-```python
-tool.run(
-    query="approaches for handling rate limits",
-    domain="api-integration",
-    limit=5
-)
-```
-
-### Memory (Optional)
-
-Enable with `include_memory=True` when you need verifiable storage.
-
-**`XacheMemoryStoreTool`** - Store with receipts
-```python
-tool.run(
-    content="Important finding",
-    context="research",
-    tags=["verified"]
-)
-```
-
-**`XacheMemoryRetrieveTool`** - Retrieve from Xache
-```python
-tool.run(
-    query="previous findings",
-    context="research",
-    limit=10
-)
-```
-
-### Reputation
-
-**`XacheReputationTool`** - Check your standing
-```python
-tool.run()
-# Output: "Reputation Score: 0.75/1.00 (Trusted)"
-```
+### Memory
+- `XacheMemoryStoreTool` - Store with cryptographic receipts
+- `XacheMemoryRetrieveTool` - Retrieve from Xache
 
 ### Knowledge Graph
+- `XacheGraphExtractTool` - Extract entities/relationships from text
+- `XacheGraphLoadTool` - Load the full knowledge graph
+- `XacheGraphQueryTool` - Query graph around an entity
+- `XacheGraphAskTool` - Ask natural language questions
+- `XacheGraphAddEntityTool` - Add entities manually
+- `XacheGraphAddRelationshipTool` - Create relationships
+- `XacheGraphMergeEntitiesTool` - Merge duplicate entities
+- `XacheGraphEntityHistoryTool` - View entity version history
 
-**`XacheGraphExtractTool`** - Extract entities/relationships from text
-```python
-tool.run(trace="John works at Acme Corp as a senior engineer.", context_hint="engineering")
-```
+### Ephemeral Context
+- `XacheEphemeralCreateSessionTool` - Create a working memory session
+- `XacheEphemeralWriteSlotTool` - Write data to a session slot
+- `XacheEphemeralReadSlotTool` - Read data from a session slot
+- `XacheEphemeralPromoteTool` - Promote session to persistent memory
 
-**`XacheGraphLoadTool`** - Load the full knowledge graph
-```python
-tool.run()  # Returns all entities and relationships
-```
-
-**`XacheGraphQueryTool`** - Query graph around an entity
-```python
-tool.run(start_entity="John Smith", depth=2)
-```
-
-**`XacheGraphAskTool`** - Ask natural language questions
-```python
-tool.run(question="Who manages the engineering team?")
-```
-
-**`XacheGraphAddEntityTool`** - Add entities manually
-```python
-tool.run(name="Acme Corp", type="organization", summary="Tech company")
-```
-
-**`XacheGraphAddRelationshipTool`** - Create relationships
-```python
-tool.run(from_entity="John", to_entity="Acme Corp", type="works_at")
-```
-
-**`XacheGraphMergeEntitiesTool`** - Merge duplicate entities
-```python
-tool.run(source_name="J. Smith", target_name="John Smith")
-```
-
-**`XacheGraphEntityHistoryTool`** - View entity version history
-```python
-tool.run(name="John Smith")
-```
+### Reputation
+- `XacheReputationTool` - Check your standing
 
 ### Sync
+- `XacheSyncTool` - Backup critical local memories
 
-**`XacheSyncTool`** - Backup critical local memories
+## Selective Tool Loading
+
 ```python
-tool.run(
-    content="Critical user context",
-    importance="critical",
-    tags=["user", "sync"]
+tools = xache_tools(
+    include_memory=True,
+    include_collective=True,
+    include_graph=True,
+    include_extraction=True,
+    include_ephemeral=True,   # included by default
+    include_reputation=True,
 )
 ```
 
@@ -203,15 +196,11 @@ tool.run(
 ### Via Environment Variables
 
 ```bash
-# Required
 XACHE_WALLET_ADDRESS=0x...
 XACHE_PRIVATE_KEY=0x...
-
-# Optional
-XACHE_API_URL=https://api.xache.xyz
-XACHE_CHAIN=base
-XACHE_NETWORK=base-sepolia
-XACHE_DEBUG=false
+XACHE_API_URL=https://api.xache.xyz    # optional
+XACHE_CHAIN=base                        # optional
+XACHE_NETWORK=base-sepolia              # optional
 ```
 
 ### Via Code
@@ -223,170 +212,44 @@ set_config(
     wallet_address="0x...",
     private_key="0x...",
     chain="base",
-    network="base-sepolia",
     debug=True
 )
 ```
 
-## Agent-to-Agent Workflows
-
-When your OpenClaw agent performs tasks for other agents or humans, use Xache for verifiable receipts:
-
-```python
-from xache_openclaw import memory_store, collective_contribute
-
-# Store task completion with receipt
-result = memory_store(
-    content=f"Completed research task: {task_summary}",
-    context="task-completion",
-    tags=["task", "receipt", f"requester:{requester_id}"]
-)
-
-# The receipt_id can be shared as proof of work
-print(f"Task completed. Receipt: {result['receiptId']}")
-
-# If the work generated valuable insights, share with collective
-collective_contribute(
-    insight=discovered_pattern,
-    domain="research",
-    evidence=f"Discovered during task {task_id}"
-)
-```
-
-## Why Xache Complements OpenClaw
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                     OpenClaw Agent                          │
-├─────────────────────────────────────────────────────────────┤
-│  Local Memory (markdown files)                              │
-│  ├── memory/YYYY-MM-DD.md   ← Daily memories               │
-│  └── MEMORY.md              ← Long-term context            │
-│                                                             │
-│  Xache Integration                                          │
-│  ├── Collective Intelligence ← Share/learn with others     │
-│  ├── Verifiable Memory      ← Cryptographic receipts       │
-│  ├── Reputation             ← ERC-8004 portable score      │
-│  └── Cross-Instance Sync    ← Multi-device access          │
-└─────────────────────────────────────────────────────────────┘
-```
-
 ## Extraction & Heuristics
 
-The extraction module analyzes conversations and auto-extracts valuable learnings (heuristics) that can be contributed to collective intelligence.
-
-### What Gets Extracted
-
-| Memory Type | Description | Example |
-|-------------|-------------|---------|
-| `DOMAIN_HEURISTIC` | Domain-specific patterns | "In code reviews, functions >50 lines should be refactored" |
-| `SUCCESSFUL_PATTERN` | Approaches that worked | "Exponential backoff improved API reliability" |
-| `ERROR_FIX` | Error→solution mappings | "TypeError: undefined → added null check" |
-| `OPTIMIZATION_INSIGHT` | Performance improvements | "Adding index reduced query time 94%" |
-| `USER_PREFERENCE` | User settings/preferences | "User prefers concise responses" |
-
-### Basic Extraction
-
-```python
-from xache_openclaw import MemoryExtractor
-
-# Create extractor with your LLM
-extractor = MemoryExtractor(
-    llm=lambda prompt: my_llm.complete(prompt),
-    confidence_threshold=0.7
-)
-
-# Extract from conversation text
-learnings = extractor.extract(
-    trace=conversation_text,
-    agent_context="research"
-)
-
-for learning in learnings:
-    print(f"[{learning.type.value}] {learning.data}")
-    print(f"  Confidence: {learning.confidence:.2f}")
-    print(f"  Reasoning: {learning.reasoning}")
-```
-
-### Extract from OpenClaw Memory Files
-
-```python
-from xache_openclaw import extract_from_openclaw_memory
-
-# Analyze an OpenClaw memory file
-learnings = extract_from_openclaw_memory(
-    memory_file="memory/2024-01-15.md",
-    llm=lambda p: my_llm.complete(p),
-    agent_context="coding-assistant"
-)
-```
-
-### Extract and Auto-Contribute
-
-The most powerful feature: extract learnings AND automatically contribute heuristics to collective intelligence.
+Auto-extract learnings from conversations and contribute to collective intelligence:
 
 ```python
 from xache_openclaw import extract_and_contribute, set_config
 
-# Configure Xache credentials
 set_config(wallet_address="0x...", private_key="0x...")
 
-# Extract and auto-contribute
 result = extract_and_contribute(
     trace=conversation_text,
     llm=lambda p: my_llm.complete(p),
     agent_context="api-integration",
-    confidence_threshold=0.8,  # Only contribute high-confidence learnings
+    confidence_threshold=0.8,
     auto_contribute=True
 )
 
 print(f"Extracted: {len(result['extractions'])} learnings")
 print(f"Contributed: {len(result['contributions'])} heuristics")
-
-for c in result['contributions']:
-    print(f"  [{c['domain']}] {c['pattern'][:60]}...")
 ```
 
-### Using Extraction Tool
+## Pricing
 
-```python
-from xache_openclaw import xache_tools
-
-# Include extraction tool (requires LLM)
-tools = xache_tools(
-    wallet_address="0x...",
-    private_key="0x...",
-    include_extraction=True,
-    llm=lambda p: my_llm.complete(p)
-)
-
-# Use with OpenClaw agent
-for tool in tools:
-    print(f"- {tool.name}: {tool.description[:50]}...")
-```
-
-### Extraction Pipeline
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    Extraction Pipeline                       │
-├─────────────────────────────────────────────────────────────┤
-│                                                              │
-│  1. INPUT: Conversation trace / OpenClaw memory file        │
-│     ↓                                                        │
-│  2. LLM ANALYSIS: Extract structured learnings              │
-│     ↓                                                        │
-│  3. VALIDATION: Filter by confidence threshold              │
-│     ↓                                                        │
-│  4. CLASSIFICATION: Identify memory types                   │
-│     ↓                                                        │
-│  5. ACTION:                                                  │
-│     ├── Store to Xache (verifiable)                         │
-│     ├── Contribute to Collective (share with others)        │
-│     └── Return for local use                                │
-│                                                              │
-└─────────────────────────────────────────────────────────────┘
-```
+| Operation | Price |
+|-----------|-------|
+| Memory Store | $0.002 |
+| Memory Retrieve | $0.003 |
+| Collective Contribute | $0.002 |
+| Collective Query | $0.011 |
+| Ephemeral Session | $0.005 |
+| Ephemeral Promote | $0.05 |
+| Extraction (managed) | $0.011 |
+| Graph Operations | $0.002 |
+| Graph Ask (managed) | $0.011 |
 
 ## Links
 

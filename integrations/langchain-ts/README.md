@@ -1,6 +1,6 @@
 # @xache/langchain
 
-LangChain.js integration for [Xache Protocol](https://xache.xyz) - verifiable AI agent memory with cryptographic receipts, collective intelligence, and portable ERC-8004 reputation.
+LangChain.js integration for [Xache Protocol](https://xache.xyz) - verifiable AI agent memory with cryptographic receipts, collective intelligence, ephemeral working memory, knowledge graph, and portable ERC-8004 reputation.
 
 ## Installation
 
@@ -40,8 +40,8 @@ import { XacheMemory } from '@xache/langchain';
 const memory = new XacheMemory({
   walletAddress: '0xYourWallet',
   privateKey: '0xYourPrivateKey',
-  apiUrl: 'https://api.xache.xyz', // optional
-  chain: 'base', // or 'solana'
+  apiUrl: 'https://api.xache.xyz',
+  chain: 'base',
 });
 ```
 
@@ -56,7 +56,7 @@ import { RetrievalQAChain } from 'langchain/chains';
 const retriever = new XacheRetriever({
   walletAddress: '0x...',
   privateKey: '0x...',
-  k: 5, // number of documents
+  k: 5,
 });
 
 const qa = RetrievalQAChain.fromLLM(llm, retriever);
@@ -64,15 +64,12 @@ const qa = RetrievalQAChain.fromLLM(llm, retriever);
 
 ### Collective Intelligence
 
-Query and contribute to shared knowledge:
-
 ```typescript
 import {
   createCollectiveContributeTool,
   createCollectiveQueryTool,
 } from '@xache/langchain';
 
-// Add to your agent's tools
 const contributeTool = createCollectiveContributeTool({
   walletAddress: '0x...',
   privateKey: '0x...',
@@ -82,13 +79,9 @@ const queryTool = createCollectiveQueryTool({
   walletAddress: '0x...',
   privateKey: '0x...',
 });
-
-const tools = [contributeTool, queryTool];
 ```
 
 ### Memory Extraction
-
-Auto-extract memories from conversations:
 
 ```typescript
 import { XacheExtractor } from '@xache/langchain';
@@ -96,20 +89,18 @@ import { XacheExtractor } from '@xache/langchain';
 const extractor = new XacheExtractor({
   walletAddress: '0x...',
   privateKey: '0x...',
-  mode: 'xache-managed', // or 'api-key' with your LLM key
+  mode: 'xache-managed',
 });
 
 const result = await extractor.extract(
   'User asked about quantum computing...',
   { autoStore: true }
 );
-
-console.log(`Extracted ${result.count} memories`);
 ```
 
 ### Knowledge Graph
 
-Build and query a privacy-preserving knowledge graph of entities and relationships:
+Build and query a privacy-preserving knowledge graph:
 
 ```typescript
 import {
@@ -131,66 +122,80 @@ const config = {
   llmApiKey: 'sk-ant-...',
 };
 
-// Extract entities from text
 const extractTool = createGraphExtractTool(config);
-
-// Query graph around an entity
 const queryTool = createGraphQueryTool(config);
-
-// Ask natural language questions
 const askTool = createGraphAskTool(config);
-
-// Load the full graph
 const loadTool = createGraphLoadTool(config);
 
-// Add entities and relationships manually
-const addEntityTool = createGraphAddEntityTool(config);
-const addRelTool = createGraphAddRelationshipTool(config);
-
-// Merge duplicate entities
-const mergeTool = createGraphMergeEntitiesTool(config);
-
-// View entity version history
-const historyTool = createGraphEntityHistoryTool(config);
-
-// Use as a retriever for RAG
+// Use graph as a retriever for RAG
 const graphRetriever = new XacheGraphRetriever({
   walletAddress: '0x...',
   privateKey: '0x...',
   k: 10,
 });
+```
 
-const docs = await graphRetriever.getRelevantDocuments('engineering team');
+### Ephemeral Context (Working Memory)
+
+Short-lived scratch sessions for multi-turn workflows with 6 named slots (`conversation`, `facts`, `tasks`, `cache`, `scratch`, `handoff`):
+
+```typescript
+import {
+  createEphemeralCreateSessionTool,
+  createEphemeralWriteSlotTool,
+  createEphemeralReadSlotTool,
+  createEphemeralPromoteTool,
+  createEphemeralStatusTool,
+} from '@xache/langchain';
+
+const config = {
+  walletAddress: '0x...',
+  privateKey: '0x...',
+};
+
+// Create tools for your agent
+const createSessionTool = createEphemeralCreateSessionTool(config);
+const writeSlotTool = createEphemeralWriteSlotTool(config);
+const readSlotTool = createEphemeralReadSlotTool(config);
+const promoteTool = createEphemeralPromoteTool(config);
+const statusTool = createEphemeralStatusTool(config);
+
+// Add to agent's toolkit
+const tools = [createSessionTool, writeSlotTool, readSlotTool, promoteTool, statusTool];
+```
+
+Or use class-based wrappers:
+
+```typescript
+import {
+  XacheEphemeralCreateSessionTool,
+  XacheEphemeralWriteSlotTool,
+  XacheEphemeralReadSlotTool,
+  XacheEphemeralPromoteTool,
+  XacheEphemeralStatusTool,
+} from '@xache/langchain';
+
+const createSession = new XacheEphemeralCreateSessionTool(config);
+const tool = createSession.asTool();
 ```
 
 ### Reputation
 
-Check and verify agent reputation:
-
 ```typescript
 import { createReputationTool, XacheReputationChecker } from '@xache/langchain';
 
-// As a tool for your agent
 const repTool = createReputationTool({
   walletAddress: '0x...',
   privateKey: '0x...',
 });
 
-// Or check other agents
 const checker = new XacheReputationChecker({
   walletAddress: '0x...',
   privateKey: '0x...',
 });
-
-const otherRep = await checker.check('did:agent:evm:0xOtherAgent...');
-if (otherRep.score >= 0.5) {
-  console.log('Agent is trustworthy');
-}
 ```
 
 ## Chat History
-
-For more control over message history:
 
 ```typescript
 import { XacheChatMessageHistory } from '@xache/langchain';
@@ -209,19 +214,17 @@ const memory = new BufferMemory({ chatHistory: history });
 
 All operations use x402 micropayments (auto-handled):
 
-| Operation            | Price  |
-| -------------------- | ------ |
-| Memory Store         | $0.002 |
-| Memory Retrieve      | $0.003 |
-| Collective Contribute| $0.002 |
-| Collective Query     | $0.011 |
+| Operation | Price |
+|-----------|-------|
+| Memory Store | $0.002 |
+| Memory Retrieve | $0.003 |
+| Collective Contribute | $0.002 |
+| Collective Query | $0.011 |
+| Ephemeral Session | $0.005 |
+| Ephemeral Promote | $0.05 |
 | Extraction (managed) | $0.011 |
-| Graph Operations     | $0.002 |
-| Graph Ask (managed)  | $0.011 |
-
-## ERC-8004 Portable Reputation
-
-Xache supports [ERC-8004](https://eips.ethereum.org/EIPS/eip-8004) for portable, on-chain reputation. Enable it to make your agent's reputation verifiable across platforms.
+| Graph Operations | $0.002 |
+| Graph Ask (managed) | $0.011 |
 
 ## Resources
 

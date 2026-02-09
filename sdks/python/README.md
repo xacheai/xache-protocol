@@ -1,16 +1,18 @@
 # Xache Protocol Python SDK
 
-Official Python SDK for [Xache Protocol](https://xache.xyz) - decentralized agent memory and collective intelligence marketplace.
+Official Python SDK for [Xache Protocol](https://xache.xyz) - decentralized agent memory, collective intelligence, ephemeral working memory, and knowledge graph.
 
 ## Features
 
-✅ **Async/Await** - Full asyncio support for concurrent operations
-✅ **Type Hints** - Complete type annotations for better IDE support
-✅ **Authentication** - Automatic request signing per protocol spec
-✅ **Payment Flow** - Built-in 402 payment handling (manual or Coinbase Commerce)
-✅ **Encryption** - Client-side encryption for memory storage
-✅ **Error Handling** - Typed exceptions with automatic retry logic
-✅ **Budget Management** - Track and control spending limits
+- **Async/Await** - Full asyncio support for concurrent operations
+- **Type Hints** - Complete type annotations for better IDE support
+- **Authentication** - Automatic request signing per protocol spec
+- **Payment Flow** - Built-in 402 payment handling (manual or Coinbase Commerce)
+- **Encryption** - Client-side encryption for memory storage
+- **Error Handling** - Typed exceptions with automatic retry logic
+- **Budget Management** - Track and control spending limits
+- **Ephemeral Context** - Short-lived working memory sessions with slot-based storage
+- **Knowledge Graph** - Privacy-preserving entity and relationship graph
 
 ## Installation
 
@@ -31,7 +33,6 @@ import asyncio
 from xache import XacheClient
 
 async def main():
-    # Initialize client
     async with XacheClient(
         api_url="https://api.xache.xyz",
         did="did:agent:evm:0xYourWalletAddress",
@@ -90,7 +91,6 @@ print(f"Failed: {batch_result.failure_count}")
 retrieve_result = await client.memory.retrieve_batch(
     storage_keys=["mem_123", "mem_456", "mem_789"],
 )
-print(f"Success: {retrieve_result.success_count}")
 for result in retrieve_result.results:
     print(f"{result.storage_key}: {result.data}")
 ```
@@ -120,6 +120,97 @@ for match in results.matches:
     print(f"Royalty: ${match.royalty_amount}")
 ```
 
+### Ephemeral Context (Working Memory)
+
+Short-lived scratch sessions for multi-turn agent workflows. Sessions have 6 named slots (`conversation`, `facts`, `tasks`, `cache`, `scratch`, `handoff`) and can be promoted to persistent memory when done.
+
+```python
+# Create an ephemeral session (x402 payment: $0.005)
+session = await client.ephemeral.create_session(
+    ttl_seconds=3600,   # 1 hour
+    max_windows=5,
+)
+print(f"Session: {session.session_key}")
+print(f"Expires: {session.expires_at}")
+
+# Write to a slot (free while session is active)
+await client.ephemeral.write_slot(
+    session_key=session.session_key,
+    slot="facts",
+    data={"user_name": "Alice", "preference": "dark_mode"},
+)
+
+await client.ephemeral.write_slot(
+    session_key=session.session_key,
+    slot="tasks",
+    data={"pending": ["research quantum computing", "write summary"]},
+)
+
+# Read from a slot
+facts = await client.ephemeral.read_slot(
+    session_key=session.session_key,
+    slot="facts",
+)
+print(f"Facts: {facts}")
+
+# Read all slots at once
+all_slots = await client.ephemeral.read_all_slots(session.session_key)
+
+# Promote to persistent memory when session is valuable ($0.05)
+result = await client.ephemeral.promote_session(session.session_key)
+print(f"Created {result.memories_created} memories")
+print(f"Memory IDs: {result.memory_ids}")
+
+# Or terminate if no longer needed (free)
+await client.ephemeral.terminate_session(session.session_key)
+```
+
+#### Session Management
+
+```python
+# List active sessions
+sessions = await client.ephemeral.list_sessions(status="active", limit=10)
+for s in sessions["sessions"]:
+    print(f"{s['sessionKey']}: {s['status']} ({s['activeSlots']})")
+
+# Renew an expiring session
+renewed = await client.ephemeral.renew_session(session.session_key)
+print(f"New expiry: {renewed.expires_at}")
+
+# Get usage stats
+stats = await client.ephemeral.get_stats()
+print(f"Active sessions: {stats['activeSessions']}")
+print(f"Promote rate: {stats['promoteRate']:.1%}")
+```
+
+### Knowledge Graph
+
+```python
+# Extract entities from text
+result = await client.graph.extract(
+    trace="Alice works at Acme Corp as a senior engineer.",
+    context_hint="engineering",
+)
+print(f"Found {len(result['entities'])} entities")
+
+# Query around an entity
+neighbors = await client.graph.query(
+    start_entity="Alice",
+    depth=2,
+)
+
+# Ask natural language questions
+answer = await client.graph.ask(
+    question="Who works at Acme Corp?",
+)
+print(f"Answer: {answer['answer']}")
+
+# Load the full graph
+graph = await client.graph.load()
+print(f"Entities: {len(graph['entities'])}")
+print(f"Relationships: {len(graph['relationships'])}")
+```
+
 ### Budget Management
 
 ```python
@@ -128,7 +219,6 @@ budget = await client.budget.get_status()
 print(f"Limit: ${budget.limit_cents / 100}")
 print(f"Spent: ${budget.spent_cents / 100}")
 print(f"Remaining: ${budget.remaining_cents / 100}")
-print(f"Usage: {budget.percentage_used:.1f}%")
 
 # Update budget limit
 await client.budget.update_limit(5000)  # $50/month
@@ -166,8 +256,8 @@ client = XacheClient(
     api_url="https://api.xache.xyz",
     did="did:agent:evm:0xYourWalletAddress",
     private_key="0x...",
-    timeout=30,  # Optional: request timeout in seconds
-    debug=False,  # Optional: enable debug logging
+    timeout=30,
+    debug=False,
 )
 ```
 
@@ -178,12 +268,8 @@ client = XacheClient(
 ```python
 client = XacheClient(
     # ... basic config
-    payment_provider={
-        "type": "manual",
-    },
+    payment_provider={"type": "manual"},
 )
-
-# When payment is required, SDK will prompt you in console
 ```
 
 #### Coinbase Commerce
@@ -196,13 +282,9 @@ client = XacheClient(
         "api_key": "YOUR_COINBASE_API_KEY",
     },
 )
-
-# Payments will be handled automatically via Coinbase Commerce
 ```
 
 ## Error Handling
-
-The SDK provides typed errors for all API error codes:
 
 ```python
 from xache import (
@@ -218,89 +300,71 @@ try:
     await client.memory.store(data=data, storage_tier="hot")
 except PaymentRequiredError as e:
     print(f"Payment required: ${e.amount}")
-    print(f"Challenge ID: {e.challenge_id}")
 except RateLimitedError as e:
     print(f"Rate limited. Retry at: {e.reset_at}")
 except BudgetExceededError as e:
     print("Budget exceeded")
-except InvalidInputError as e:
-    print(f"Invalid input: {e.message}")
 ```
 
 ## Context Manager
 
-Always use the client as an async context manager to ensure proper cleanup:
-
 ```python
 async with XacheClient(...) as client:
-    # Your code here
     pass
 # HTTP session automatically closed
-```
-
-Or manually manage the lifecycle:
-
-```python
-client = XacheClient(...)
-try:
-    # Your code here
-    pass
-finally:
-    await client.close()
 ```
 
 ## API Reference
 
 ### XacheClient
 
-Main client class for interacting with Xache Protocol.
+#### Services
 
-#### Properties
+| Service | Description |
+|---------|-------------|
+| `client.identity` | Identity registration and management |
+| `client.memory` | Memory storage, retrieval, batch operations |
+| `client.collective` | Collective intelligence marketplace |
+| `client.ephemeral` | Ephemeral working memory sessions |
+| `client.graph` | Knowledge graph operations |
+| `client.budget` | Budget management |
+| `client.receipts` | Receipt access, proofs, and analytics |
+| `client.reputation` | Agent reputation scores |
+| `client.extraction` | Memory extraction from text |
+| `client.sessions` | Wallet session management (x402 v2) |
+| `client.royalty` | Royalty earnings and payouts |
+| `client.workspaces` | Workspace management for teams |
+| `client.owner` | Owner registration and agent fleet management |
 
-- `client.identity` - Identity registration
-- `client.memory` - Memory storage and retrieval
-- `client.collective` - Collective intelligence marketplace
-- `client.budget` - Budget management
-- `client.receipts` - Receipt access and analytics
+## Pricing
 
-### Types
-
-All request/response types are available:
-
-```python
-from xache import (
-    RegisterIdentityRequest,
-    RegisterIdentityResponse,
-    StoreMemoryRequest,
-    StoreMemoryResponse,
-    QueryCollectiveRequest,
-    BudgetStatus,
-    Receipt,
-)
-```
+| Operation | Price |
+|-----------|-------|
+| Memory Store | $0.002 |
+| Memory Retrieve | $0.003 |
+| Batch Store (per item) | $0.0009 |
+| Batch Retrieve (per item) | $0.0016 |
+| Collective Contribute | $0.002 |
+| Collective Query | $0.011 |
+| Ephemeral Session | $0.005 |
+| Ephemeral Promote | $0.05 |
+| Graph Operations | $0.002 |
+| Graph Ask (managed) | $0.011 |
+| Extraction (BYOK) | $0.002 |
+| Extraction (managed) | $0.011 |
 
 ## Development
 
 ```bash
-# Install with dev dependencies
 pip install -e ".[dev]"
-
-# Run tests
 pytest
-
-# Run type checking
 mypy xache
-
-# Format code
 black xache
-
-# Lint
-pylint xache
 ```
 
 ## Requirements
 
-- Python 3.8+
+- Python 3.9+
 - aiohttp
 - typing-extensions
 

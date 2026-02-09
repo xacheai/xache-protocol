@@ -1,6 +1,6 @@
 # crewai-xache
 
-CrewAI integration for [Xache Protocol](https://xache.xyz) - verifiable AI agent memory with cryptographic receipts, collective intelligence, and portable ERC-8004 reputation.
+CrewAI integration for [Xache Protocol](https://xache.xyz) - verifiable AI agent memory with cryptographic receipts, collective intelligence, ephemeral working memory, knowledge graph, and portable ERC-8004 reputation.
 
 ## Installation
 
@@ -16,7 +16,6 @@ pip install crewai-xache
 from crewai import Agent, Task, Crew
 from xache_crewai import xache_tools
 
-# Create an agent with Xache tools
 researcher = Agent(
     role="Researcher",
     goal="Research and remember important findings",
@@ -42,35 +41,29 @@ crew.kickoff()
 from crewai import Crew
 from xache_crewai import XacheMemory
 
-# Create Xache memory
 memory = XacheMemory(
     wallet_address="0x...",
     private_key="0x..."
 )
 
-# Use with your crew
 crew = Crew(
     agents=[researcher, writer],
     tasks=[research_task, write_task],
-    memory=memory  # Persists across crew executions
+    memory=memory
 )
 ```
 
-## Features
+## Available Tools
 
-### Available Tools
-
-The `xache_tools()` function returns a set of tools for your agents:
-
-#### Memory Tools
+### Memory Tools
 - **xache_memory_store** - Store information with cryptographic receipts
 - **xache_memory_retrieve** - Retrieve stored memories by semantic search
 
-#### Collective Intelligence Tools
+### Collective Intelligence Tools
 - **xache_collective_contribute** - Share insights with other agents
 - **xache_collective_query** - Learn from community knowledge
 
-#### Knowledge Graph Tools
+### Knowledge Graph Tools
 - **xache_graph_extract** - Extract entities/relationships from text
 - **xache_graph_load** - Load the full knowledge graph
 - **xache_graph_query** - Query graph around an entity
@@ -80,13 +73,55 @@ The `xache_tools()` function returns a set of tools for your agents:
 - **xache_graph_merge_entities** - Merge duplicate entities
 - **xache_graph_entity_history** - View entity version history
 
-#### Extraction Tools
+### Ephemeral Context Tools
+- **xache_ephemeral_create_session** - Create a short-lived working memory session
+- **xache_ephemeral_write_slot** - Write data to a session slot
+- **xache_ephemeral_read_slot** - Read data from a session slot
+- **xache_ephemeral_promote** - Promote session to persistent memory
+
+### Extraction Tools
 - **xache_extract_memories** - Extract memories from conversation text using LLM
 
-#### Reputation Tools
+### Reputation Tools
 - **xache_check_reputation** - View reputation score and ERC-8004 status
 
-### Selective Tool Loading
+## Ephemeral Context
+
+Ephemeral context gives agents short-lived scratch sessions with 6 named slots (`conversation`, `facts`, `tasks`, `cache`, `scratch`, `handoff`). Sessions auto-expire and can be promoted to persistent memory.
+
+```python
+from xache_crewai import (
+    XacheEphemeralCreateSessionTool,
+    XacheEphemeralWriteSlotTool,
+    XacheEphemeralReadSlotTool,
+    XacheEphemeralPromoteTool,
+)
+
+# Create individual tools
+create_session = XacheEphemeralCreateSessionTool(
+    wallet_address="0x...",
+    private_key="0x..."
+)
+
+write_slot = XacheEphemeralWriteSlotTool(
+    wallet_address="0x...",
+    private_key="0x..."
+)
+
+# Or include in the full tool set
+tools = xache_tools(
+    wallet_address="0x...",
+    private_key="0x...",
+    include_ephemeral=True  # included by default
+)
+```
+
+**Use cases for crews:**
+- Hand off context between agents in a pipeline (use the `handoff` slot)
+- Track task progress across crew execution steps
+- Accumulate facts during research, then promote the best ones
+
+## Selective Tool Loading
 
 ```python
 # Only memory tools
@@ -98,41 +133,19 @@ tools = xache_tools(
     include_reputation=False,
     include_graph=False,
     include_extraction=False,
+    include_ephemeral=False,
 )
 
-# Graph + extraction with BYOK LLM
+# Only ephemeral + graph
 tools = xache_tools(
     wallet_address="0x...",
     private_key="0x...",
-    llm_provider="anthropic",
-    llm_api_key="sk-ant-...",
-)
-```
-
-### Individual Tool Usage
-
-```python
-from xache_crewai import (
-    XacheMemoryStoreTool,
-    XacheMemoryRetrieveTool,
-    XacheCollectiveContributeTool,
-    XacheCollectiveQueryTool,
-    XacheReputationTool,
-    XacheGraphExtractTool,
-    XacheGraphQueryTool,
-    XacheGraphAskTool,
-    XacheExtractionTool,
-)
-
-# Create specific tools
-store_tool = XacheMemoryStoreTool(
-    wallet_address="0x...",
-    private_key="0x..."
-)
-
-agent = Agent(
-    role="Writer",
-    tools=[store_tool]  # Only give this agent storage capability
+    include_memory=False,
+    include_collective=False,
+    include_reputation=False,
+    include_graph=True,
+    include_extraction=False,
+    include_ephemeral=True,
 )
 ```
 
@@ -143,92 +156,39 @@ agent = Agent(
 ```python
 from xache_crewai import XacheMemory
 
-memory = XacheMemory(
-    wallet_address="0x...",
-    private_key="0x..."
-)
-
-# Save a memory
-memory_id = memory.save(
-    value="Important finding about quantum computing",
-    metadata={"source": "research"},
-    agent="researcher"
-)
-
-# Search memories
-results = memory.search(
-    query="quantum computing",
-    agent="researcher",
-    limit=5
-)
+memory = XacheMemory(wallet_address="0x...", private_key="0x...")
+memory_id = memory.save(value="Important finding", metadata={"source": "research"}, agent="researcher")
+results = memory.search(query="quantum computing", limit=5)
 ```
 
-### Short-Term Memory
+### Short-Term / Long-Term Memory
 
 ```python
-from xache_crewai import XacheShortTermMemory
+from xache_crewai import XacheShortTermMemory, XacheLongTermMemory
 
-short_term = XacheShortTermMemory(
-    wallet_address="0x...",
-    private_key="0x..."
-)
-
-# Items tagged as short-term for easy filtering
-short_term.save("Current task context")
-```
-
-### Long-Term Memory
-
-```python
-from xache_crewai import XacheLongTermMemory
-
-long_term = XacheLongTermMemory(
-    wallet_address="0x...",
-    private_key="0x..."
-)
-
-# Items tagged as long-term, persists across sessions
-long_term.save("Core knowledge that should be retained")
+short_term = XacheShortTermMemory(wallet_address="0x...", private_key="0x...")
+long_term = XacheLongTermMemory(wallet_address="0x...", private_key="0x...")
 ```
 
 ## Multi-Agent Crews
 
-Each agent can have isolated or shared memories:
-
 ```python
-from crewai import Agent, Crew
-from xache_crewai import xache_tools, XacheMemory
-
 # Shared wallet = shared memory
 shared_config = {
     "wallet_address": "0xSharedWallet...",
     "private_key": "0xSharedKey..."
 }
 
-researcher = Agent(
-    role="Researcher",
-    tools=xache_tools(**shared_config)
-)
-
-writer = Agent(
-    role="Writer",
-    tools=xache_tools(**shared_config)
-)
-
-# Both agents share the same memory pool
-memory = XacheMemory(**shared_config)
+researcher = Agent(role="Researcher", tools=xache_tools(**shared_config))
+writer = Agent(role="Writer", tools=xache_tools(**shared_config))
 
 crew = Crew(
     agents=[researcher, writer],
-    memory=memory
+    memory=XacheMemory(**shared_config)
 )
 ```
 
-For isolated memories, use different wallet addresses for each agent.
-
 ## Pricing
-
-All operations use x402 micropayments (auto-handled):
 
 | Operation | Price |
 |-----------|-------|
@@ -236,13 +196,11 @@ All operations use x402 micropayments (auto-handled):
 | Memory Retrieve | $0.003 |
 | Collective Contribute | $0.002 |
 | Collective Query | $0.011 |
+| Ephemeral Session | $0.005 |
+| Ephemeral Promote | $0.05 |
 | Extraction (managed) | $0.011 |
 | Graph Operations | $0.002 |
 | Graph Ask (managed) | $0.011 |
-
-## ERC-8004 Portable Reputation
-
-Your crew builds reputation through quality contributions and payments. Enable ERC-8004 to make reputation portable and verifiable across platforms.
 
 ## Resources
 

@@ -923,6 +923,219 @@ class XacheExtractionTool(BaseTool):
         return output
 
 
+# =============================================================================
+# Ephemeral Context Tools
+# =============================================================================
+
+
+class EphemeralCreateSessionInput(BaseModel):
+    """Input for ephemeral create session tool"""
+    ttl_seconds: int = Field(default=3600, description="Session TTL in seconds (default: 3600)")
+    max_windows: int = Field(default=5, description="Maximum renewal windows (default: 5)")
+
+
+class EphemeralWriteSlotInput(BaseModel):
+    """Input for ephemeral write slot tool"""
+    session_key: str = Field(description="The ephemeral session key")
+    slot: str = Field(description="Slot name (conversation, facts, tasks, cache, scratch, handoff)")
+    data: Dict = Field(description="Data to write to the slot")
+
+
+class EphemeralReadSlotInput(BaseModel):
+    """Input for ephemeral read slot tool"""
+    session_key: str = Field(description="The ephemeral session key")
+    slot: str = Field(description="Slot name (conversation, facts, tasks, cache, scratch, handoff)")
+
+
+class EphemeralPromoteInput(BaseModel):
+    """Input for ephemeral promote tool"""
+    session_key: str = Field(description="The ephemeral session key to promote")
+
+
+class XacheEphemeralCreateSessionTool(BaseTool):
+    """Create a new ephemeral working memory session."""
+    name: str = "xache_ephemeral_create_session"
+    description: str = (
+        "Create a new ephemeral working memory session. "
+        "Returns a session key for storing temporary data in slots."
+    )
+    args_schema: Type[BaseModel] = EphemeralCreateSessionInput
+
+    wallet_address: str
+    private_key: Optional[str] = Field(default=None, exclude=True, description="Private key for signing")
+    signer: Optional[Any] = Field(default=None, exclude=True, description="External signer")
+    wallet_provider: Optional[Any] = Field(default=None, exclude=True, description="Wallet provider")
+    encryption_key: Optional[str] = Field(default=None, exclude=True, description="Encryption key")
+    api_url: Optional[str] = None
+    chain: str = "base"
+    timeout: int = 30000
+    debug: bool = False
+
+    _client: Optional[XacheClient] = None
+
+    def __init__(self, **kwargs: Any) -> None:
+        if 'api_url' not in kwargs or kwargs['api_url'] is None:
+            kwargs['api_url'] = os.environ.get("XACHE_API_URL", "https://api.xache.xyz")
+        super().__init__(**kwargs)
+        chain_prefix = "sol" if self.chain == "solana" else "evm"
+        did = f"did:agent:{chain_prefix}:{self.wallet_address.lower()}"
+        self._client = XacheClient(
+            api_url=self.api_url, did=did, private_key=self.private_key,
+            signer=self.signer, wallet_provider=self.wallet_provider,
+            encryption_key=self.encryption_key,
+            timeout=self.timeout, debug=self.debug,
+        )
+
+    def _run(self, ttl_seconds: int = 3600, max_windows: int = 5) -> str:
+        async def _create() -> Any:
+            async with self._client as client:
+                return await client.ephemeral.create_session(
+                    ttl_seconds=ttl_seconds, max_windows=max_windows,
+                )
+        session = run_sync(_create())
+        return (
+            f"Created ephemeral session.\n"
+            f"Session Key: {session.session_key}\n"
+            f"Status: {session.status}\n"
+            f"TTL: {session.ttl_seconds}s\n"
+            f"Expires: {session.expires_at}"
+        )
+
+
+class XacheEphemeralWriteSlotTool(BaseTool):
+    """Write data to an ephemeral session slot."""
+    name: str = "xache_ephemeral_write_slot"
+    description: str = (
+        "Write data to an ephemeral session slot. "
+        "Slots: conversation, facts, tasks, cache, scratch, handoff."
+    )
+    args_schema: Type[BaseModel] = EphemeralWriteSlotInput
+
+    wallet_address: str
+    private_key: Optional[str] = Field(default=None, exclude=True, description="Private key for signing")
+    signer: Optional[Any] = Field(default=None, exclude=True, description="External signer")
+    wallet_provider: Optional[Any] = Field(default=None, exclude=True, description="Wallet provider")
+    encryption_key: Optional[str] = Field(default=None, exclude=True, description="Encryption key")
+    api_url: Optional[str] = None
+    chain: str = "base"
+    timeout: int = 30000
+    debug: bool = False
+
+    _client: Optional[XacheClient] = None
+
+    def __init__(self, **kwargs: Any) -> None:
+        if 'api_url' not in kwargs or kwargs['api_url'] is None:
+            kwargs['api_url'] = os.environ.get("XACHE_API_URL", "https://api.xache.xyz")
+        super().__init__(**kwargs)
+        chain_prefix = "sol" if self.chain == "solana" else "evm"
+        did = f"did:agent:{chain_prefix}:{self.wallet_address.lower()}"
+        self._client = XacheClient(
+            api_url=self.api_url, did=did, private_key=self.private_key,
+            signer=self.signer, wallet_provider=self.wallet_provider,
+            encryption_key=self.encryption_key,
+            timeout=self.timeout, debug=self.debug,
+        )
+
+    def _run(self, session_key: str, slot: str, data: Dict = None) -> str:
+        async def _write() -> Any:
+            async with self._client as client:
+                await client.ephemeral.write_slot(session_key, slot, data or {})
+        run_sync(_write())
+        return f'Wrote data to slot "{slot}" in session {session_key[:12]}...'
+
+
+class XacheEphemeralReadSlotTool(BaseTool):
+    """Read data from an ephemeral session slot."""
+    name: str = "xache_ephemeral_read_slot"
+    description: str = (
+        "Read data from an ephemeral session slot. "
+        "Slots: conversation, facts, tasks, cache, scratch, handoff."
+    )
+    args_schema: Type[BaseModel] = EphemeralReadSlotInput
+
+    wallet_address: str
+    private_key: Optional[str] = Field(default=None, exclude=True, description="Private key for signing")
+    signer: Optional[Any] = Field(default=None, exclude=True, description="External signer")
+    wallet_provider: Optional[Any] = Field(default=None, exclude=True, description="Wallet provider")
+    encryption_key: Optional[str] = Field(default=None, exclude=True, description="Encryption key")
+    api_url: Optional[str] = None
+    chain: str = "base"
+    timeout: int = 30000
+    debug: bool = False
+
+    _client: Optional[XacheClient] = None
+
+    def __init__(self, **kwargs: Any) -> None:
+        if 'api_url' not in kwargs or kwargs['api_url'] is None:
+            kwargs['api_url'] = os.environ.get("XACHE_API_URL", "https://api.xache.xyz")
+        super().__init__(**kwargs)
+        chain_prefix = "sol" if self.chain == "solana" else "evm"
+        did = f"did:agent:{chain_prefix}:{self.wallet_address.lower()}"
+        self._client = XacheClient(
+            api_url=self.api_url, did=did, private_key=self.private_key,
+            signer=self.signer, wallet_provider=self.wallet_provider,
+            encryption_key=self.encryption_key,
+            timeout=self.timeout, debug=self.debug,
+        )
+
+    def _run(self, session_key: str, slot: str) -> str:
+        import json
+
+        async def _read() -> Any:
+            async with self._client as client:
+                return await client.ephemeral.read_slot(session_key, slot)
+        data = run_sync(_read())
+        return json.dumps(data, indent=2)
+
+
+class XacheEphemeralPromoteTool(BaseTool):
+    """Promote an ephemeral session to persistent memory."""
+    name: str = "xache_ephemeral_promote"
+    description: str = (
+        "Promote an ephemeral session to persistent memory. "
+        "Extracts valuable data from slots and stores as permanent memories."
+    )
+    args_schema: Type[BaseModel] = EphemeralPromoteInput
+
+    wallet_address: str
+    private_key: Optional[str] = Field(default=None, exclude=True, description="Private key for signing")
+    signer: Optional[Any] = Field(default=None, exclude=True, description="External signer")
+    wallet_provider: Optional[Any] = Field(default=None, exclude=True, description="Wallet provider")
+    encryption_key: Optional[str] = Field(default=None, exclude=True, description="Encryption key")
+    api_url: Optional[str] = None
+    chain: str = "base"
+    timeout: int = 30000
+    debug: bool = False
+
+    _client: Optional[XacheClient] = None
+
+    def __init__(self, **kwargs: Any) -> None:
+        if 'api_url' not in kwargs or kwargs['api_url'] is None:
+            kwargs['api_url'] = os.environ.get("XACHE_API_URL", "https://api.xache.xyz")
+        super().__init__(**kwargs)
+        chain_prefix = "sol" if self.chain == "solana" else "evm"
+        did = f"did:agent:{chain_prefix}:{self.wallet_address.lower()}"
+        self._client = XacheClient(
+            api_url=self.api_url, did=did, private_key=self.private_key,
+            signer=self.signer, wallet_provider=self.wallet_provider,
+            encryption_key=self.encryption_key,
+            timeout=self.timeout, debug=self.debug,
+        )
+
+    def _run(self, session_key: str) -> str:
+        async def _promote() -> Any:
+            async with self._client as client:
+                return await client.ephemeral.promote_session(session_key)
+        result = run_sync(_promote())
+        output = f"Promoted session {session_key[:12]}...\n"
+        output += f"Memories created: {result.memories_created}\n"
+        if result.memory_ids:
+            output += f"Memory IDs: {', '.join(result.memory_ids)}\n"
+        if result.receipt_id:
+            output += f"Receipt: {result.receipt_id}"
+        return output
+
+
 def xache_tools(
     wallet_address: str,
     private_key: Optional[str] = None,
@@ -933,6 +1146,7 @@ def xache_tools(
     include_reputation: bool = True,
     include_graph: bool = True,
     include_extraction: bool = True,
+    include_ephemeral: bool = True,
     llm_provider: str = "anthropic",
     llm_api_key: str = "",
     llm_model: str = "",
@@ -1033,5 +1247,13 @@ def xache_tools(
 
     if include_extraction:
         tools.append(XacheExtractionTool(**graph_config))
+
+    if include_ephemeral:
+        tools.extend([
+            XacheEphemeralCreateSessionTool(**config),
+            XacheEphemeralWriteSlotTool(**config),
+            XacheEphemeralReadSlotTool(**config),
+            XacheEphemeralPromoteTool(**config),
+        ])
 
     return tools

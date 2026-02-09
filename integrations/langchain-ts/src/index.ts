@@ -77,3 +77,18 @@ export {
   XacheGraphRetriever,
 } from './graph';
 export type { GraphToolConfig, XacheGraphRetrieverConfig } from './graph';
+
+// Ephemeral Context
+export {
+  createEphemeralCreateSessionTool,
+  createEphemeralWriteSlotTool,
+  createEphemeralReadSlotTool,
+  createEphemeralPromoteTool,
+  createEphemeralStatusTool,
+  XacheEphemeralCreateSessionTool,
+  XacheEphemeralWriteSlotTool,
+  XacheEphemeralReadSlotTool,
+  XacheEphemeralPromoteTool,
+  XacheEphemeralStatusTool,
+} from './ephemeral';
+export type { EphemeralToolConfig } from './ephemeral';
