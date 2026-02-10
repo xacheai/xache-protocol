@@ -63,6 +63,10 @@ export type {
   TenantId,
   SubjectContext,
   SubjectRetrievalContext,
+  // Cognitive Fingerprint types
+  CognitiveCategory,
+  ProbeRequest,
+  ProbeResponse,
   // Auto-contribute types
   AutoContributeConfig,
   AutoContribution,
@@ -114,6 +118,7 @@ export { EphemeralService } from './services/EphemeralService';
 export type {
   EphemeralSlotName,
   CreateEphemeralSessionOptions,
+  AutoProbeConfig,
   EphemeralSession,
   PromoteResult,
   EphemeralStructuredView,

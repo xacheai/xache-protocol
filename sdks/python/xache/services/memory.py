@@ -21,6 +21,7 @@ from ..types import (
     MemoryListItem,
     ListMemoriesResponse,
 )
+from ..crypto.fingerprint import generate_fingerprint
 
 
 class MemoryService:
@@ -42,6 +43,7 @@ class MemoryService:
         scope: Optional[str] = None,
         segment_id: Optional[str] = None,
         tenant_id: Optional[str] = None,
+        fingerprint: Optional[bool] = None,
     ) -> StoreMemoryResponse:
         """
         Store encrypted memory per LLD §2.4
@@ -91,6 +93,11 @@ class MemoryService:
 
         if anchoring == "immediate":
             request_body["anchoring"] = "immediate"
+
+        # Generate cognitive fingerprint (unless opt-out)
+        if fingerprint is not False:
+            fp = generate_fingerprint(data, key, context)
+            request_body["fingerprint"] = fp
 
         # Make API request with automatic 402 payment
         response = await self.client.request_with_payment(
@@ -434,6 +441,88 @@ class MemoryService:
             failure_count=resp_data["failureCount"],
             batch_receipt_id=resp_data["batchReceiptId"],
         )
+
+    async def probe(
+        self,
+        query: str,
+        category: Optional[str] = None,
+        limit: int = 10,
+        scope: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        """
+        Probe memories using cognitive fingerprints (zero-knowledge semantic search).
+        Free operation (no payment required).
+
+        Generates a probe fingerprint from the query text client-side, sends hashed
+        shadows to the server for matching, then batch retrieves + decrypts matches.
+
+        Args:
+            query: Natural language query text
+            category: Optional cognitive category filter
+            limit: Maximum number of results (default: 10, max: 50)
+            scope: Optional scope filter dict
+
+        Returns:
+            Dict with matches (list of {storageKey, category, data}), total
+
+        Example:
+            ```python
+            results = await client.memory.probe("user dark mode preferences")
+            for m in results["matches"]:
+                print(f"[{m['category']}] {m['storageKey']}: {m.get('data')}")
+            ```
+        """
+        key = await self._get_encryption_key()
+        fp = generate_fingerprint({"query": query}, key)
+
+        # POST /v1/memory/probe (free — no payment required)
+        request_body: Dict[str, Any] = {
+            "topicHashes": fp["topicHashes"],
+            "embedding64": fp["embedding64"],
+            "version": fp["version"],
+            "limit": limit,
+        }
+        if category:
+            request_body["category"] = category
+        if scope:
+            request_body["scope"] = scope
+
+        response = await self.client.request(
+            "POST",
+            "/v1/memory/probe",
+            request_body,
+        )
+
+        if not response.success or not response.data:
+            raise Exception("Memory probe failed")
+
+        resp_data = response.data
+        matches = resp_data.get("matches", [])
+
+        # Batch retrieve + decrypt matched memories
+        if matches:
+            storage_keys = [m["storageKey"] for m in matches]
+            retrieved = await self.retrieve_batch(storage_keys)
+
+            data_map: Dict[str, Any] = {}
+            for result in retrieved.results:
+                if result.memory_id and result.data:
+                    data_map[result.memory_id] = result.data
+
+            enriched_matches = []
+            for m in matches:
+                enriched_matches.append({
+                    "storageKey": m["storageKey"],
+                    "category": m["category"],
+                    "data": data_map.get(m["storageKey"]),
+                })
+
+            return {
+                "matches": enriched_matches,
+                "total": resp_data.get("total", len(matches)),
+            }
+
+        return {"matches": [], "total": 0}
 
     def _validate_store_request(self, data: Any, storage_tier: Any) -> None:
         """Validate store request"""

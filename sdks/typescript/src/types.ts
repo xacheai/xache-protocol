@@ -492,6 +492,47 @@ export interface OnChainClaimResponse {
   message: string;
 }
 
+// =============================================================================
+// COGNITIVE FINGERPRINT TYPES (per docs/xache_cognition.md)
+// =============================================================================
+
+/**
+ * Cognitive category for memory classification
+ */
+export type CognitiveCategory =
+  | 'preference' | 'fact' | 'event' | 'procedure' | 'relationship'
+  | 'observation' | 'decision' | 'goal' | 'constraint' | 'reference'
+  | 'summary' | 'handoff' | 'pattern' | 'feedback' | 'unknown';
+
+/**
+ * Memory probe request — zero-knowledge semantic search
+ * Free operation (no payment required)
+ */
+export interface ProbeRequest {
+  /** Natural language query text */
+  query: string;
+  /** Optional category filter */
+  category?: CognitiveCategory;
+  /** Maximum number of results (default: 10, max: 50) */
+  limit?: number;
+  /** Optional scope filter */
+  scope?: { subjectId?: string; scope?: string; includeGlobal?: boolean };
+}
+
+/**
+ * Memory probe response
+ */
+export interface ProbeResponse {
+  /** Matched memories with decrypted data */
+  matches: Array<{
+    storageKey: string;
+    category: string;
+    data?: unknown;
+  }>;
+  /** Total number of matches found */
+  total: number;
+}
+
 /**
  * Memory store request per LLD §2.4
  * Extended with Subject Keys per docs/SUBJECT-KEYS-ARCHITECTURE.md
@@ -538,6 +579,9 @@ export interface StoreMemoryRequest {
 
   /** Opt-in immediate anchoring (5-min instead of daily). Adds $0.005/receipt surcharge. */
   anchoring?: 'immediate';
+
+  /** Set to false to opt out of cognitive fingerprinting */
+  fingerprint?: false;
 }
 
 /**

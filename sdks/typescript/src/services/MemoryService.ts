@@ -15,10 +15,14 @@ import type {
   BatchRetrieveMemoryResponse,
   ListMemoriesRequest,
   ListMemoriesResponse,
+  ProbeRequest,
+  ProbeResponse,
   StorageTier,
   SubjectContext,
 } from '../types';
 import { encryptData, decryptData, generateKey } from '../crypto/encryption';
+import { generateFingerprint } from '../crypto/fingerprint';
+import type { CognitiveFingerprint } from '../crypto/fingerprint';
 import sodium from 'libsodium-wrappers';
 import {
   MemoryHelpers,
@@ -91,6 +95,12 @@ export class MemoryService {
     const checksumBytes = sodium.crypto_generichash(32, payloadBytes);
     const checksum = sodium.to_hex(checksumBytes);
 
+    // Generate cognitive fingerprint (unless opt-out)
+    let fingerprint: CognitiveFingerprint | undefined;
+    if ((request as any).fingerprint !== false) {
+      fingerprint = await generateFingerprint(request.data, key, request.context);
+    }
+
     // Prepare API request per backend contract
     // Include Subject Keys fields for multi-tenant memory isolation
     const apiRequest: Record<string, unknown> = {
@@ -105,6 +115,11 @@ export class MemoryService {
       metadata: request.metadata,
       expiresAt: request.expiresAt,
     };
+
+    // Add cognitive fingerprint if generated
+    if (fingerprint) {
+      apiRequest.fingerprint = fingerprint;
+    }
 
     // Add anchoring tier if immediate anchoring requested
     if (request.anchoring === 'immediate') {
@@ -555,6 +570,74 @@ export class MemoryService {
       failureCount: response.data.failureCount,
       batchReceiptId: response.data.batchReceiptId,
     };
+  }
+
+  /**
+   * Probe memories using cognitive fingerprints (zero-knowledge semantic search)
+   * Cost: $0.003 per probe (automatic 402 payment)
+   *
+   * Generates a probe fingerprint from the query text client-side, sends hashed
+   * shadows to the server for matching, then batch retrieves + decrypts matches.
+   *
+   * @example
+   * ```typescript
+   * const results = await client.memory.probe({
+   *   query: 'What does the user prefer for dark mode?',
+   *   category: 'preference',
+   *   limit: 5,
+   * });
+   *
+   * results.matches.forEach(m => {
+   *   console.log(`[${m.category}] ${m.storageKey}:`, m.data);
+   * });
+   * ```
+   */
+  async probe(request: ProbeRequest): Promise<ProbeResponse> {
+    await sodium.ready;
+
+    const key = await this.getEncryptionKey();
+    const fingerprint = await generateFingerprint(
+      { query: request.query },
+      key
+    );
+
+    // POST /v1/memory/probe (free — no payment required)
+    const response = await this.client.request<{
+      matches: Array<{ storageKey: string; category: string }>;
+      total: number;
+    }>('POST', '/v1/memory/probe', {
+      topicHashes: fingerprint.topicHashes,
+      category: request.category,
+      embedding64: fingerprint.embedding64,
+      version: fingerprint.version,
+      limit: request.limit || 10,
+      scope: request.scope,
+    });
+
+    // Batch retrieve + decrypt matched memories
+    if (response.data?.matches.length) {
+      const keys = response.data.matches.map(m => m.storageKey);
+      const retrieved = await this.retrieveBatch({ storageKeys: keys });
+
+      // Build a map of storageKey → decrypted data for fast lookup
+      const dataMap = new Map<string, Record<string, unknown> | undefined>();
+      for (const result of retrieved.results) {
+        if (result.storageKey && result.data) {
+          dataMap.set(result.storageKey, result.data);
+        }
+      }
+
+      return {
+        matches: response.data.matches.map(m => ({
+          storageKey: m.storageKey,
+          category: m.category,
+          data: dataMap.get(m.storageKey),
+        })),
+        total: response.data.total,
+      };
+    }
+
+    return { matches: [], total: 0 };
   }
 
   /**

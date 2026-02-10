@@ -14,10 +14,18 @@ import type { XacheClient } from '../XacheClient';
 
 export type EphemeralSlotName = 'conversation' | 'facts' | 'tasks' | 'cache' | 'scratch' | 'handoff';
 
+export interface AutoProbeConfig {
+  enabled: boolean;
+  intervalSeconds?: number;  // default 60, min 30, max 300
+  maxResults?: number;       // default 5, max 20
+  scope?: { subjectId?: string; scope?: string; includeGlobal?: boolean };
+}
+
 export interface CreateEphemeralSessionOptions {
   ttlSeconds?: number;    // default 3600
   maxWindows?: number;    // default 5
   metadata?: Record<string, unknown>;
+  autoProbe?: AutoProbeConfig;
 }
 
 export interface EphemeralSession {
@@ -102,6 +110,8 @@ export interface PaginatedEphemeralSessions {
  */
 export class EphemeralService {
   private readonly client: XacheClient;
+  private readonly autoProbeTimers = new Map<string, ReturnType<typeof setInterval>>();
+  private readonly autoProbeSeen = new Map<string, Set<string>>();
 
   constructor(client: XacheClient) {
     this.client = client;
@@ -130,7 +140,14 @@ export class EphemeralService {
       throw new Error(response.error?.message || 'Failed to create ephemeral session');
     }
 
-    return response.data;
+    const session = response.data;
+
+    // Start auto-probe timer if configured
+    if (options.autoProbe?.enabled) {
+      this.startAutoProbe(session.sessionKey, options.autoProbe);
+    }
+
+    return session;
   }
 
   /**
@@ -188,6 +205,8 @@ export class EphemeralService {
    * Terminate an ephemeral session
    */
   async terminateSession(sessionKey: string): Promise<void> {
+    this.stopAutoProbe(sessionKey);
+
     const response = await this.client.request<{ success: boolean }>(
       'DELETE',
       `/v1/ephemeral/sessions/${encodeURIComponent(sessionKey)}`,
@@ -341,5 +360,106 @@ export class EphemeralService {
     }
 
     return response.data;
+  }
+
+  // =========================================================================
+  // Auto-Probe
+  // =========================================================================
+
+  /**
+   * Start auto-probe timer for a session.
+   * Reads conversation + facts slots, generates a probe, writes results to cache slot.
+   */
+  private startAutoProbe(sessionKey: string, config: AutoProbeConfig): void {
+    const intervalMs = Math.max(30, Math.min(300, config.intervalSeconds || 60)) * 1000;
+    const maxResults = Math.max(1, Math.min(20, config.maxResults || 5));
+
+    this.autoProbeSeen.set(sessionKey, new Set());
+
+    const timer = setInterval(async () => {
+      try {
+        await this.runAutoProbe(sessionKey, maxResults, config.scope);
+      } catch {
+        // Best-effort — don't crash the session on probe failure
+      }
+    }, intervalMs);
+
+    this.autoProbeTimers.set(sessionKey, timer);
+  }
+
+  /**
+   * Stop auto-probe timer for a session.
+   */
+  private stopAutoProbe(sessionKey: string): void {
+    const timer = this.autoProbeTimers.get(sessionKey);
+    if (timer) {
+      clearInterval(timer);
+      this.autoProbeTimers.delete(sessionKey);
+    }
+    this.autoProbeSeen.delete(sessionKey);
+  }
+
+  /**
+   * Run a single auto-probe cycle: read slots → probe → write cache.
+   */
+  private async runAutoProbe(
+    sessionKey: string,
+    maxResults: number,
+    scope?: { subjectId?: string; scope?: string; includeGlobal?: boolean },
+  ): Promise<void> {
+    // Read conversation + facts slots to build probe query
+    const [conversation, facts] = await Promise.all([
+      this.readSlot(sessionKey, 'conversation').catch(() => ({})),
+      this.readSlot(sessionKey, 'facts').catch(() => ({})),
+    ]);
+
+    const parts: string[] = [];
+    if (conversation && Object.keys(conversation).length > 0) {
+      parts.push(JSON.stringify(conversation));
+    }
+    if (facts && Object.keys(facts).length > 0) {
+      parts.push(JSON.stringify(facts));
+    }
+
+    if (parts.length === 0) return;
+
+    const query = parts.join(' ');
+
+    // Probe for relevant memories
+    const probeResult = await this.client.memory.probe({
+      query,
+      limit: maxResults,
+      scope,
+    });
+
+    if (!probeResult.matches.length) return;
+
+    // Deduplicate against already-cached memories
+    const seen = this.autoProbeSeen.get(sessionKey) || new Set();
+    const newMatches = probeResult.matches.filter(m => !seen.has(m.storageKey));
+
+    if (newMatches.length === 0) return;
+
+    for (const m of newMatches) {
+      seen.add(m.storageKey);
+    }
+
+    // Write new matches to cache slot (merge with existing)
+    const existingCache = await this.readSlot(sessionKey, 'cache').catch(() => ({}));
+    const cachedMemories = (existingCache as any)?.autoProbeResults || [];
+    const updated = [
+      ...cachedMemories,
+      ...newMatches.map(m => ({
+        storageKey: m.storageKey,
+        category: m.category,
+        data: m.data,
+        probedAt: new Date().toISOString(),
+      })),
+    ];
+
+    await this.writeSlot(sessionKey, 'cache', {
+      ...(existingCache || {}),
+      autoProbeResults: updated,
+    });
   }
 }
