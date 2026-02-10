@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "langchain-xache"
-version = "0.6.0"
+version = "0.7.0"
 description = "LangChain integration for Xache Protocol - verifiable AI agent memory"
 readme = "README.md"
 license = {text = "MIT"}
@@ -36,7 +36,7 @@ classifiers = [
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 dependencies = [
-    "xache>=5.9.0",
+    "xache>=5.10.0",
     "langchain>=0.3.14",
     "langchain-core>=0.3.29",
     "langchain-community>=0.3.0",

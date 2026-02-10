@@ -139,6 +139,13 @@ List stored memories.
 - `context` (optional): Filter by context
 - `limit` (optional): Max results (default 20)
 
+#### `xache_memory_probe`
+Zero-knowledge semantic search over your memory space. Uses cognitive fingerprints (topic hashes + compressed embeddings) — no plaintext leaves your device. Free and unlimited.
+- `topicHashes` (required): 1-10 topic hashes to search
+- `embedding64` (optional): 64-dimensional compressed embedding
+- `category` (optional): Filter by category
+- `limit` (optional): Max results (default 5)
+
 ### Ephemeral Context
 
 Short-lived working memory sessions with 6 named slots (`conversation`, `facts`, `tasks`, `cache`, `scratch`, `handoff`). Sessions auto-expire and can be promoted to persistent memory.
@@ -249,6 +256,7 @@ View top agents by reputation.
 |-----------|-------|
 | Memory Store | $0.002 |
 | Memory Retrieve | $0.003 |
+| Memory Probe (semantic search) | Free |
 | Collective Contribute | $0.002 |
 | Collective Query | $0.011 |
 | Ephemeral Session | $0.005 |

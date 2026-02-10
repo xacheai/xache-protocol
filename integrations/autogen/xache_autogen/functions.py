@@ -137,6 +137,65 @@ def memory_retrieve(
     }
 
 
+def memory_probe(
+    query: str,
+    category: Optional[str] = None,
+    limit: int = 10,
+    *,
+    wallet_address: str,
+    private_key: Optional[str] = None,
+    api_url: Optional[str] = None,
+    chain: str = "base",
+    signer: Optional[Any] = None,
+    wallet_provider: Optional[Any] = None,
+    encryption_key: Optional[str] = None,
+) -> Dict[str, Any]:
+    """
+    Probe memories using zero-knowledge semantic matching.
+
+    Uses cognitive fingerprints to find relevant memories without
+    knowing exact storage keys. All fingerprint computation is client-side.
+
+    Args:
+        query: What to search for in your memories
+        category: Optional cognitive category filter
+        limit: Maximum number of results (1-50)
+        wallet_address: Wallet address for authentication
+        private_key: Private key for signing
+        api_url: Xache API URL
+        chain: Chain to use ('base' or 'solana')
+
+    Returns:
+        Dict with matches list
+    """
+    client = create_xache_client(wallet_address, private_key, api_url, chain, signer=signer, wallet_provider=wallet_provider, encryption_key=encryption_key)
+
+    async def _probe():
+        async with client as c:
+            return await c.memory.probe(
+                query=query,
+                category=category,
+                limit=limit,
+            )
+
+    result = run_sync(_probe())
+
+    matches = result.get("matches", []) if isinstance(result, dict) else []
+    return {
+        "count": len(matches),
+        "total": result.get("total", len(matches)) if isinstance(result, dict) else 0,
+        "receiptId": result.get("receiptId", "") if isinstance(result, dict) else "",
+        "matches": [
+            {
+                "storageKey": m.get("storageKey"),
+                "category": m.get("category"),
+                "data": m.get("data"),
+            }
+            for m in matches
+        ]
+    }
+
+
 def collective_contribute(
     insight: str,
     domain: str,
@@ -1003,6 +1062,33 @@ xache_functions = [
                 "limit": {
                     "type": "integer",
                     "description": "Maximum number of results (default: 5)"
+                }
+            },
+            "required": ["query"]
+        }
+    },
+    {
+        "name": "xache_memory_probe",
+        "description": "Probe memories using zero-knowledge semantic matching. Uses cognitive fingerprints to find relevant memories without knowing exact storage keys.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "query": {
+                    "type": "string",
+                    "description": "What to search for in your memories"
+                },
+                "category": {
+                    "type": "string",
+                    "enum": [
+                        "preference", "fact", "event", "procedure", "relationship",
+                        "observation", "decision", "goal", "constraint", "reference",
+                        "summary", "handoff", "pattern", "feedback", "unknown"
+                    ],
+                    "description": "Optional cognitive category filter"
+                },
+                "limit": {
+                    "type": "integer",
+                    "description": "Maximum number of results (default: 10, max: 50)"
                 }
             },
             "required": ["query"]

@@ -135,6 +135,22 @@ const graphRetriever = new XacheGraphRetriever({
 });
 ```
 
+### Cognition (Memory Probe)
+
+Zero-knowledge semantic search — check what your agent already knows before storing or retrieving. Free and unlimited.
+
+```typescript
+import { createProbeTool } from '@xache/langchain';
+
+const probeTool = createProbeTool({
+  walletAddress: '0x...',
+  privateKey: '0x...',
+});
+
+// Add to agent's toolkit alongside other tools
+const tools = [probeTool, ...otherTools];
+```
+
 ### Ephemeral Context (Working Memory)
 
 Short-lived scratch sessions for multi-turn workflows with 6 named slots (`conversation`, `facts`, `tasks`, `cache`, `scratch`, `handoff`):
@@ -218,6 +234,7 @@ All operations use x402 micropayments (auto-handled):
 |-----------|-------|
 | Memory Store | $0.002 |
 | Memory Retrieve | $0.003 |
+| Memory Probe (semantic search) | Free |
 | Collective Contribute | $0.002 |
 | Collective Query | $0.011 |
 | Ephemeral Session | $0.005 |

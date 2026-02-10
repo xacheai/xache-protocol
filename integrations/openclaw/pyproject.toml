@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "openclaw-xache"
-version = "0.4.0"
+version = "0.5.0"
 description = "OpenClaw integration for Xache Protocol - collective intelligence, verifiable memory, and portable reputation for AI agents"
 readme = "README.md"
 license = {text = "MIT"}
@@ -38,7 +38,7 @@ classifiers = [
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 dependencies = [
-    "xache>=5.9.0",
+    "xache>=5.10.0",
     "openclaw>=0.1.0",
     "pydantic>=2.0.0",
 ]

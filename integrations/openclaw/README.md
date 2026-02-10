@@ -155,6 +155,7 @@ promote = XacheEphemeralPromoteTool()
 ### Memory
 - `XacheMemoryStoreTool` - Store with cryptographic receipts
 - `XacheMemoryRetrieveTool` - Retrieve from Xache
+- `XacheMemoryProbeTool` - Zero-knowledge semantic search (free)
 
 ### Knowledge Graph
 - `XacheGraphExtractTool` - Extract entities/relationships from text
@@ -243,6 +244,7 @@ print(f"Contributed: {len(result['contributions'])} heuristics")
 |-----------|-------|
 | Memory Store | $0.002 |
 | Memory Retrieve | $0.003 |
+| Memory Probe (semantic search) | Free |
 | Collective Contribute | $0.002 |
 | Collective Query | $0.011 |
 | Ephemeral Session | $0.005 |

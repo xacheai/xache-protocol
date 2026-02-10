@@ -1,0 +1,39 @@
+{
+  "name": "@xache/common",
+  "version": "5.0.0",
+  "description": "Shared business logic for Xache Protocol",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsup src/index.ts --format cjs,esm --dts --clean",
+    "dev": "tsup src/index.ts --format cjs,esm --dts --watch",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src --ext .ts"
+  },
+  "keywords": [
+    "xache",
+    "business-logic",
+    "shared"
+  ],
+  "author": "Xache Protocol Team",
+  "license": "MIT",
+  "dependencies": {
+    "@xache/types": "workspace:*",
+    "@xache/constants": "workspace:*",
+    "@xache/utils": "workspace:*",
+    "@xache/crypto": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.5",
+    "tsup": "^8.0.1",
+    "typescript": "^5.3.3"
+  }
+}

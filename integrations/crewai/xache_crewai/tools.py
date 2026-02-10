@@ -26,6 +26,13 @@ class MemoryRetrieveInput(BaseModel):
     limit: int = Field(default=5, description="Number of results")
 
 
+class MemoryProbeInput(BaseModel):
+    """Input for memory probe tool"""
+    query: str = Field(description="What to search for in your memories")
+    category: Optional[str] = Field(default=None, description="Filter by cognitive category")
+    limit: int = Field(default=10, description="Maximum number of results (1-50)")
+
+
 class CollectiveContributeInput(BaseModel):
     """Input for collective contribute tool"""
     insight: str = Field(description="The insight to contribute")
@@ -175,6 +182,73 @@ class XacheMemoryRetrieveTool(BaseTool):
             if m.get("context"):
                 output += f" [Context: {m['context']}]"
 
+        return output
+
+
+class XacheMemoryProbeTool(BaseTool):
+    """
+    Probe memories using zero-knowledge semantic matching.
+
+    Use cognitive fingerprints to find relevant memories without
+    knowing exact storage keys. All fingerprint computation is
+    client-side — the server never sees plaintext.
+    """
+    name: str = "xache_memory_probe"
+    description: str = (
+        "Search your memories by topic using zero-knowledge semantic matching. "
+        "Use this when you want to check what you already know about a topic "
+        "without knowing exact storage keys."
+    )
+    args_schema: Type[BaseModel] = MemoryProbeInput
+
+    wallet_address: str
+    private_key: Optional[str] = Field(default=None, exclude=True, description="Private key for signing")
+    signer: Optional[Any] = Field(default=None, exclude=True, description="External signer")
+    wallet_provider: Optional[Any] = Field(default=None, exclude=True, description="Wallet provider")
+    encryption_key: Optional[str] = Field(default=None, exclude=True, description="Encryption key")
+    api_url: Optional[str] = None
+    chain: str = "base"
+    timeout: int = 30000
+    debug: bool = False
+
+    _client: Optional[XacheClient] = None
+
+    def __init__(self, **kwargs: Any) -> None:
+        if 'api_url' not in kwargs or kwargs['api_url'] is None:
+            kwargs['api_url'] = os.environ.get("XACHE_API_URL", "https://api.xache.xyz")
+        super().__init__(**kwargs)
+        chain_prefix = "sol" if self.chain == "solana" else "evm"
+        did = f"did:agent:{chain_prefix}:{self.wallet_address.lower()}"
+        self._client = XacheClient(
+            api_url=self.api_url, did=did, private_key=self.private_key,
+            signer=self.signer, wallet_provider=self.wallet_provider,
+            encryption_key=self.encryption_key,
+            timeout=self.timeout, debug=self.debug,
+        )
+
+    def _run(self, query: str, category: Optional[str] = None, limit: int = 10) -> str:
+        import json as _json
+
+        async def _probe() -> Any:
+            async with self._client as client:
+                return await client.memory.probe(
+                    query=query, category=category, limit=limit,
+                )
+        result = run_sync(_probe())
+        matches = result.get("matches", [])
+
+        if not matches:
+            return "No matching memories found for this query."
+
+        total = result.get("total", len(matches))
+        output = f"Found {len(matches)} matching memories (total: {total}):\n"
+        for i, m in enumerate(matches, 1):
+            data = m.get("data", "")
+            if isinstance(data, str):
+                data = data[:300]
+            else:
+                data = _json.dumps(data)[:300]
+            output += f"\n{i}. [{m.get('category', 'unknown')}] {data}"
         return output
 
 
@@ -1222,6 +1296,7 @@ def xache_tools(
         tools.extend([
             XacheMemoryStoreTool(**config),
             XacheMemoryRetrieveTool(**config),
+            XacheMemoryProbeTool(**config),
         ])
 
     if include_collective:

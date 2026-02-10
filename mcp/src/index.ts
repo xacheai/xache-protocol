@@ -688,6 +688,38 @@ const TOOLS: Tool[] = [
   },
 
   // =========================================================================
+  // Memory Probe (Cognitive Fingerprints)
+  // =========================================================================
+  {
+    name: 'xache_memory_probe',
+    description:
+      'Search your memories by topic using zero-knowledge semantic matching. Uses cognitive fingerprints to find relevant memories without knowing exact storage keys. All fingerprint computation is client-side — the server never sees plaintext.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        query: {
+          type: 'string',
+          description: 'What to search for in your memories',
+        },
+        category: {
+          type: 'string',
+          enum: [
+            'preference', 'fact', 'event', 'procedure', 'relationship',
+            'observation', 'decision', 'goal', 'constraint', 'reference',
+            'summary', 'handoff', 'pattern', 'feedback', 'unknown',
+          ],
+          description: 'Optional cognitive category filter',
+        },
+        limit: {
+          type: 'number',
+          description: 'Maximum number of results (default: 10, max: 50)',
+        },
+      },
+      required: ['query'],
+    },
+  },
+
+  // =========================================================================
   // Ephemeral Context Tools
   // =========================================================================
   {
@@ -1527,6 +1559,39 @@ async function handleGraphEntityHistory(
 }
 
 // =============================================================================
+// Memory Probe Handler
+// =============================================================================
+
+async function handleMemoryProbe(
+  client: XacheClient,
+  args: { query: string; category?: string; limit?: number }
+): Promise<string> {
+  const result = await client.memory.probe({
+    query: args.query,
+    category: args.category as any,
+    limit: args.limit || 10,
+  });
+
+  const matches = result.matches || [];
+
+  if (matches.length === 0) {
+    return 'No matching memories found for this query.';
+  }
+
+  let output = `Found ${matches.length} matching memories (total: ${result.total}):\n`;
+
+  matches.forEach((match: any, i: number) => {
+    const data = typeof match.data === 'string'
+      ? match.data.slice(0, 300)
+      : JSON.stringify(match.data).slice(0, 300);
+    output += `\n${i + 1}. [${match.category}] ${data}`;
+    output += ` (key: ${match.storageKey})`;
+  });
+
+  return output;
+}
+
+// =============================================================================
 // Ephemeral Context Handlers
 // =============================================================================
 
@@ -1697,6 +1762,9 @@ async function main(): Promise<void> {
           break;
         case 'xache_graph_entity_history':
           result = await handleGraphEntityHistory(client, args as any);
+          break;
+        case 'xache_memory_probe':
+          result = await handleMemoryProbe(client, args as any);
           break;
         case 'xache_ephemeral_create_session':
           result = await handleEphemeralCreateSession(client, args as any);

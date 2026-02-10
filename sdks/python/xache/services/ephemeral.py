@@ -6,7 +6,10 @@ scratch space that agents can use during a task and optionally promote
 to persistent memory.
 """
 
-from typing import Any, Dict, List, Optional
+import asyncio
+import json
+from datetime import datetime, timezone
+from typing import Any, Dict, List, Optional, Set
 from dataclasses import dataclass, field
 
 
@@ -32,6 +35,15 @@ class PromoteResult:
     memories_created: int
     memory_ids: List[str]
     receipt_id: Optional[str] = None
+
+
+@dataclass
+class AutoProbeConfig:
+    """Configuration for auto-probe in ephemeral sessions"""
+    enabled: bool = False
+    interval_seconds: int = 60   # min 30, max 300
+    max_results: int = 5         # max 20
+    scope: Optional[Dict[str, Any]] = None  # { subjectId?, scope?, includeGlobal? }
 
 
 class EphemeralService:
@@ -64,6 +76,8 @@ class EphemeralService:
 
     def __init__(self, client: Any) -> None:
         self.client = client
+        self._auto_probe_tasks: Dict[str, asyncio.Task] = {}
+        self._auto_probe_seen: Dict[str, Set[str]] = {}
 
     # =========================================================================
     # Session Lifecycle
@@ -74,6 +88,7 @@ class EphemeralService:
         ttl_seconds: Optional[int] = None,
         max_windows: Optional[int] = None,
         metadata: Optional[Dict[str, Any]] = None,
+        auto_probe: Optional[AutoProbeConfig] = None,
     ) -> EphemeralSession:
         """
         Create a new ephemeral session (x402 payment).
@@ -82,6 +97,7 @@ class EphemeralService:
             ttl_seconds: Session time-to-live in seconds (default 3600)
             max_windows: Maximum renewal windows (default 5)
             metadata: Optional metadata to attach
+            auto_probe: Optional auto-probe configuration
 
         Returns:
             Created ephemeral session
@@ -103,7 +119,13 @@ class EphemeralService:
                 else "Failed to create ephemeral session"
             )
 
-        return self._parse_session(response.data)
+        session = self._parse_session(response.data)
+
+        # Start auto-probe if configured
+        if auto_probe and auto_probe.enabled:
+            self._start_auto_probe(session.session_key, auto_probe)
+
+        return session
 
     async def get_session(self, session_key: str) -> Optional[EphemeralSession]:
         """
@@ -194,6 +216,8 @@ class EphemeralService:
         Returns:
             True if successfully terminated
         """
+        self._stop_auto_probe(session_key)
+
         response = await self.client.request(
             "DELETE", f"/v1/ephemeral/sessions/{session_key}"
         )
@@ -415,6 +439,122 @@ class EphemeralService:
             )
 
         return response.data
+
+    # =========================================================================
+    # Auto-Probe
+    # =========================================================================
+
+    def _start_auto_probe(self, session_key: str, config: AutoProbeConfig) -> None:
+        """Start auto-probe background task for a session."""
+        interval = max(30, min(300, config.interval_seconds))
+        max_results = max(1, min(20, config.max_results))
+        self._auto_probe_seen[session_key] = set()
+
+        task = asyncio.create_task(
+            self._auto_probe_loop(session_key, interval, max_results, config.scope)
+        )
+        self._auto_probe_tasks[session_key] = task
+
+    def _stop_auto_probe(self, session_key: str) -> None:
+        """Stop auto-probe background task for a session."""
+        task = self._auto_probe_tasks.pop(session_key, None)
+        if task and not task.done():
+            task.cancel()
+        self._auto_probe_seen.pop(session_key, None)
+
+    async def _auto_probe_loop(
+        self,
+        session_key: str,
+        interval: int,
+        max_results: int,
+        scope: Optional[Dict[str, Any]],
+    ) -> None:
+        """Background loop that periodically probes for relevant memories."""
+        try:
+            while True:
+                await asyncio.sleep(interval)
+                try:
+                    await self._run_auto_probe(session_key, max_results, scope)
+                except Exception:
+                    pass  # Best-effort — don't crash the session on probe failure
+        except asyncio.CancelledError:
+            pass
+
+    async def _run_auto_probe(
+        self,
+        session_key: str,
+        max_results: int,
+        scope: Optional[Dict[str, Any]],
+    ) -> None:
+        """Run a single auto-probe cycle: read slots -> probe -> write cache."""
+        # Read conversation + facts slots
+        conversation: Dict[str, Any] = {}
+        facts: Dict[str, Any] = {}
+        try:
+            conversation = await self.read_slot(session_key, "conversation")
+        except Exception:
+            pass
+        try:
+            facts = await self.read_slot(session_key, "facts")
+        except Exception:
+            pass
+
+        parts: List[str] = []
+        if conversation:
+            parts.append(json.dumps(conversation))
+        if facts:
+            parts.append(json.dumps(facts))
+
+        if not parts:
+            return
+
+        query = " ".join(parts)
+
+        # Probe for relevant memories
+        probe_kwargs: Dict[str, Any] = {"query": query, "limit": max_results}
+        if scope:
+            probe_kwargs["scope"] = scope
+
+        probe_result = await self.client.memory.probe(**probe_kwargs)
+
+        if not probe_result.get("matches"):
+            return
+
+        # Deduplicate against already-cached memories
+        seen = self._auto_probe_seen.get(session_key, set())
+        new_matches = [
+            m for m in probe_result["matches"] if m.get("storageKey") not in seen
+        ]
+
+        if not new_matches:
+            return
+
+        for m in new_matches:
+            seen.add(m.get("storageKey", ""))
+
+        # Write new matches to cache slot (merge with existing)
+        existing_cache: Dict[str, Any] = {}
+        try:
+            existing_cache = await self.read_slot(session_key, "cache")
+        except Exception:
+            pass
+
+        cached_memories = existing_cache.get("autoProbeResults", [])
+        now = datetime.now(timezone.utc).isoformat()
+        updated = cached_memories + [
+            {
+                "storageKey": m.get("storageKey"),
+                "category": m.get("category"),
+                "data": m.get("data"),
+                "probedAt": now,
+            }
+            for m in new_matches
+        ]
+
+        await self.write_slot(session_key, "cache", {
+            **existing_cache,
+            "autoProbeResults": updated,
+        })
 
     # =========================================================================
     # Internal

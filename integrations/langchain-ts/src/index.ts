@@ -78,6 +78,13 @@ export {
 } from './graph';
 export type { GraphToolConfig, XacheGraphRetrieverConfig } from './graph';
 
+// Memory Probe (Cognitive Fingerprints)
+export {
+  createMemoryProbeTool,
+  XacheMemoryProbeTool,
+} from './probe';
+export type { ProbeToolConfig } from './probe';
+
 // Ephemeral Context
 export {
   createEphemeralCreateSessionTool,

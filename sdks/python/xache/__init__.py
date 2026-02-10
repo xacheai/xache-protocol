@@ -119,6 +119,14 @@ from .services.graph import GraphService
 # Ephemeral Context
 from .services.ephemeral import EphemeralService
 
+# Cognitive Fingerprints
+from .crypto.fingerprint import (
+    COGNITIVE_CATEGORIES,
+    generate_fingerprint,
+    extract_concepts,
+    classify_category,
+)
+
 # Subject Keys
 from .crypto.subject import (
     SubjectId,
@@ -298,4 +306,9 @@ __all__ = [
     "GraphService",
     # Ephemeral Context
     "EphemeralService",
+    # Cognitive Fingerprints
+    "COGNITIVE_CATEGORIES",
+    "generate_fingerprint",
+    "extract_concepts",
+    "classify_category",
 ]

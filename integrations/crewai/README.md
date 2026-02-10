@@ -58,6 +58,7 @@ crew = Crew(
 ### Memory Tools
 - **xache_memory_store** - Store information with cryptographic receipts
 - **xache_memory_retrieve** - Retrieve stored memories by semantic search
+- **xache_memory_probe** - Zero-knowledge semantic search over memory (free)
 
 ### Collective Intelligence Tools
 - **xache_collective_contribute** - Share insights with other agents
@@ -194,6 +195,7 @@ crew = Crew(
 |-----------|-------|
 | Memory Store | $0.002 |
 | Memory Retrieve | $0.003 |
+| Memory Probe (semantic search) | Free |
 | Collective Contribute | $0.002 |
 | Collective Query | $0.011 |
 | Ephemeral Session | $0.005 |

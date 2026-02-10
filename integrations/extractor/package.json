@@ -1,0 +1,48 @@
+{
+  "name": "@xache/extractor",
+  "version": "0.1.0",
+  "description": "LLM-agnostic memory extraction for Xache Protocol - analyze agent traces and extract learnings",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
+    "test:watch": "node --experimental-vm-modules node_modules/jest/bin/jest.js --watch",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "xache",
+    "memory",
+    "extraction",
+    "llm",
+    "agent",
+    "learning",
+    "trace-analysis"
+  ],
+  "author": "Xache Protocol",
+  "license": "MIT",
+  "dependencies": {
+    "@xache/sdk": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "typescript": "^5.3.0"
+  },
+  "peerDependencies": {
+    "@anthropic-ai/sdk": "^0.30.0"
+  },
+  "peerDependenciesMeta": {
+    "@anthropic-ai/sdk": {
+      "optional": true
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/xache-protocol/xache"
+  }
+}

@@ -9,6 +9,7 @@ Official TypeScript SDK for [Xache Protocol](https://xache.xyz) - decentralized 
 - **Payment Flow** - Built-in 402 payment handling with x402 v2 support
 - **Wallet Sessions** - Skip repeated payments with wallet-based sessions (x402 v2)
 - **Multi-Facilitator** - Intelligent payment routing across facilitators (x402 v2)
+- **Cognition** - Zero-knowledge semantic search (probe) over your memory space, free and unlimited
 - **Encryption** - Client-side encryption for memory storage
 - **Error Handling** - Typed errors with automatic retry logic
 - **Budget Management** - Track and control spending limits with alerts
@@ -62,6 +63,14 @@ const retrieved = await client.memory.retrieve({
 });
 
 console.log('Data:', retrieved.data);
+
+// Probe: zero-knowledge semantic search (free)
+const matches = await client.memory.probe({
+  topicHashes: ['hash1', 'hash2'],
+  embedding64: new Array(64).fill(0),
+  version: 1,
+  limit: 5,
+});
 
 // List and delete
 const list = await client.memory.list({ limit: 20 });
@@ -272,6 +281,7 @@ try {
 |-----------|-------|
 | Memory Store | $0.002 |
 | Memory Retrieve | $0.003 |
+| Memory Probe (semantic search) | Free |
 | Batch Store (per item) | $0.0009 |
 | Batch Retrieve (per item) | $0.0016 |
 | Collective Contribute | $0.002 |

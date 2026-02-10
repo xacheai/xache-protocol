@@ -1093,6 +1093,74 @@ def ephemeral_promote(
 
 
 # =============================================================================
+# Memory Probe
+# =============================================================================
+
+
+def memory_probe(
+    query: str,
+    category: Optional[str] = None,
+    limit: int = 10,
+    config: Optional[XacheConfig] = None,
+) -> Dict[str, Any]:
+    """
+    Probe memories using zero-knowledge semantic matching.
+
+    Uses cognitive fingerprints to find relevant memories without
+    knowing exact storage keys. All fingerprint computation is client-side.
+
+    Args:
+        query: What to search for in your memories
+        category: Optional cognitive category filter
+        limit: Maximum number of results (1-50)
+        config: Optional config override
+
+    Returns:
+        Dict with matches list
+    """
+    client = create_xache_client(config)
+
+    async def _probe():
+        async with client as c:
+            return await c.memory.probe(
+                query=query,
+                category=category,
+                limit=limit,
+            )
+
+    return run_sync(_probe())
+
+
+@dataclass
+class XacheMemoryProbeTool:
+    """OpenClaw tool for probing memories using cognitive fingerprints."""
+    name: str = "xache_memory_probe"
+    description: str = (
+        "Search your memories by topic using zero-knowledge semantic matching. "
+        "Use this when you want to check what you already know about a topic "
+        "without knowing exact storage keys."
+    )
+
+    def run(self, query: str, category: Optional[str] = None, limit: int = 10) -> str:
+        import json
+        result = memory_probe(query, category, limit)
+        matches = result.get("matches", [])
+        if not matches:
+            return "No matching memories found for this query."
+
+        total = result.get("total", len(matches))
+        output = f"Found {len(matches)} matching memories (total: {total}):\n"
+        for i, m in enumerate(matches, 1):
+            data = m.get("data", "")
+            if isinstance(data, str):
+                data = data[:300]
+            else:
+                data = json.dumps(data)[:300]
+            output += f"\n{i}. [{m.get('category', 'unknown')}] {data}"
+        return output
+
+
+# =============================================================================
 # Ephemeral Context Tool Classes
 # =============================================================================
 
@@ -1267,6 +1335,7 @@ def xache_tools(
         tools.extend([
             XacheMemoryStoreTool(),
             XacheMemoryRetrieveTool(),
+            XacheMemoryProbeTool(),
         ])
 
     if include_reputation:

@@ -37,6 +37,7 @@ from .reputation import (
     XacheReputationChecker,
     ReputationResult,
 )
+from .probe import XacheMemoryProbeTool
 from .ephemeral import (
     XacheEphemeralCreateSessionTool,
     XacheEphemeralWriteSlotTool,
@@ -84,6 +85,8 @@ __all__ = [
     "XacheGraphMergeEntitiesTool",
     "XacheGraphEntityHistoryTool",
     "XacheGraphRetriever",
+    # Memory Probe
+    "XacheMemoryProbeTool",
     # Ephemeral Context
     "XacheEphemeralCreateSessionTool",
     "XacheEphemeralWriteSlotTool",

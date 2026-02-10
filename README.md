@@ -19,14 +19,14 @@ Xache provides infrastructure for AI agents to:
 
 | Package | Language | Version | Install |
 |---------|----------|---------|---------|
-| [@xache/sdk](./sdks/typescript) | TypeScript | 5.9.0 | `npm install @xache/sdk` |
-| [xache](./sdks/python) | Python | 5.9.0 | `pip install xache` |
+| [@xache/sdk](./sdks/typescript) | TypeScript | 5.10.0 | `npm install @xache/sdk` |
+| [xache](./sdks/python) | Python | 5.10.0 | `pip install xache` |
 
 ### MCP Server
 
 | Package | Version | Install |
 |---------|---------|---------|
-| [@xache/mcp-server](./mcp) | 0.7.0 | `npm install -g @xache/mcp-server` |
+| [@xache/mcp-server](./mcp) | 0.8.0 | `npm install -g @xache/mcp-server` |
 
 Works with Claude Desktop, Claude Code, Cursor, OpenClaw, and any MCP-compatible client.
 
@@ -34,11 +34,11 @@ Works with Claude Desktop, Claude Code, Cursor, OpenClaw, and any MCP-compatible
 
 | Package | Framework | Version | Install |
 |---------|-----------|---------|---------|
-| [@xache/langchain](./integrations/langchain-ts) | LangChain.js | 0.6.0 | `npm install @xache/langchain` |
-| [langchain-xache](./integrations/langchain-python) | LangChain Python | 0.6.0 | `pip install langchain-xache` |
-| [crewai-xache](./integrations/crewai) | CrewAI | 0.4.0 | `pip install crewai-xache` |
-| [autogen-xache](./integrations/autogen) | AutoGen | 0.4.0 | `pip install autogen-xache` |
-| [openclaw-xache](./integrations/openclaw) | OpenClaw | 0.4.0 | `pip install openclaw-xache` |
+| [@xache/langchain](./integrations/langchain-ts) | LangChain.js | 0.7.0 | `npm install @xache/langchain` |
+| [langchain-xache](./integrations/langchain-python) | LangChain Python | 0.7.0 | `pip install langchain-xache` |
+| [crewai-xache](./integrations/crewai) | CrewAI | 0.5.0 | `pip install crewai-xache` |
+| [autogen-xache](./integrations/autogen) | AutoGen | 0.5.0 | `pip install autogen-xache` |
+| [openclaw-xache](./integrations/openclaw) | OpenClaw | 0.5.0 | `pip install openclaw-xache` |
 
 ## Quick Start
 
@@ -173,7 +173,7 @@ Add to your Claude Desktop config (`claude_desktop_config.json`):
 }
 ```
 
-This gives your AI assistant 23 tools: memory (store/retrieve/list), ephemeral context (create session/write slot/read slot/promote/status), collective intelligence (contribute/query/list), knowledge graph (extract/load/query/ask/add entity/add relationship/merge/history), extraction, and reputation.
+This gives your AI assistant 24 tools: memory (store/retrieve/list/probe), ephemeral context (create session/write slot/read slot/promote/status), collective intelligence (contribute/query/list), knowledge graph (extract/load/query/ask/add entity/add relationship/merge/history), extraction, and reputation.
 
 ## Features
 
@@ -182,6 +182,13 @@ This gives your AI assistant 23 tools: memory (store/retrieve/list), ephemeral c
 - Cryptographic receipts with Merkle proofs
 - Subject-based access control and multi-tenancy
 - Batch operations
+
+### Cognition (Memory Probe)
+- Zero-knowledge semantic search over your memory space
+- Cognitive fingerprints: topic hashes + compressed embeddings (no plaintext leaves your device)
+- Free and unlimited — probe before you store, probe before you retrieve
+- Auto-probe in ephemeral sessions for continuous context awareness
+- Category and scope filtering with ranked relevance scoring
 
 ### Ephemeral Context
 - Session-scoped working memory with automatic expiry
@@ -224,6 +231,7 @@ Xache uses the [x402 protocol](https://x402.org) for pay-per-use micropayments. 
 |-----------|-------|
 | Memory Store | $0.002 |
 | Memory Retrieve | $0.003 |
+| Memory Probe (semantic search) | Free |
 | Ephemeral Create Session | $0.005 |
 | Ephemeral Renew Session | $0.005 |
 | Ephemeral Promote to Memory | $0.050 |
