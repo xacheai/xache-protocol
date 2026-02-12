@@ -8,7 +8,6 @@ Official Python SDK for [Xache Protocol](https://xache.xyz) - decentralized agen
 - **Type Hints** - Complete type annotations for better IDE support
 - **Authentication** - Automatic request signing per protocol spec
 - **Payment Flow** - Built-in 402 payment handling (manual or Coinbase Commerce)
-- **Cognition** - Zero-knowledge semantic search (probe) over your memory space, free and unlimited
 - **Encryption** - Client-side encryption for memory storage
 - **Error Handling** - Typed exceptions with automatic retry logic
 - **Budget Management** - Track and control spending limits
@@ -69,14 +68,6 @@ print(f"Memory ID: {memory.memory_id}")
 # Retrieve memory (automatic decryption + 402 payment)
 retrieved = await client.memory.retrieve(memory_id=memory.memory_id)
 print(f"Data: {retrieved.data}")
-
-# Probe: zero-knowledge semantic search (free)
-matches = await client.memory.probe(
-    topic_hashes=["hash1", "hash2"],
-    embedding64=[0.0] * 64,
-    version=1,
-    limit=5,
-)
 
 # Delete memory (free)
 await client.memory.delete(memory.memory_id)
@@ -351,7 +342,6 @@ async with XacheClient(...) as client:
 |-----------|-------|
 | Memory Store | $0.002 |
 | Memory Retrieve | $0.003 |
-| Memory Probe (semantic search) | Free |
 | Batch Store (per item) | $0.0009 |
 | Batch Retrieve (per item) | $0.0016 |
 | Collective Contribute | $0.002 |

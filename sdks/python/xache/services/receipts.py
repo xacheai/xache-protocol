@@ -164,7 +164,7 @@ class ReceiptsService:
         query_string = "&".join(params)
         path = f"/v1/anchors?{query_string}"
 
-        response = await self.client.request("GET", path, skip_auth=True)
+        response = await self.client.request("GET", path)
 
         if not response.success or not response.data:
             raise Exception(

@@ -215,7 +215,6 @@ export class ReceiptService {
       'GET',
       path,
       undefined,
-      { skipAuth: true }
     );
 
     if (!response.success || !response.data) {

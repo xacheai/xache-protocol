@@ -13,13 +13,12 @@ class WalletSession:
     wallet_address: str
     chain: str
     network: str
-    created_at: str
-    expires_at: str
+    created_at: int  # Unix ms timestamp
+    expires_at: int  # Unix ms timestamp
     max_amount: str
-    spent_amount: str
-    remaining_amount: str
+    amount_spent: str
     scope: List[str]
-    active: bool
+    agent_did: Optional[str] = None
 
 
 @dataclass
@@ -38,6 +37,8 @@ class CreateSessionOptions:
     wallet_address: str
     chain: str
     network: str
+    signed_message: str
+    signature: str
     duration_seconds: int = 3600  # 1 hour default
     max_amount: Optional[str] = None
     scope: Optional[List[str]] = None
@@ -72,6 +73,8 @@ class SessionService:
                 wallet_address="0x1234...",
                 chain="evm",
                 network="base-sepolia",
+                signed_message=signed_siwe,
+                signature=wallet_sig,
                 duration_seconds=3600,  # 1 hour
                 max_amount="10000000",  # 10 USDC
                 scope=["memory:store", "memory:retrieve"]
@@ -86,6 +89,8 @@ class SessionService:
             "chain": options.chain,
             "network": options.network,
             "durationSeconds": options.duration_seconds,
+            "signedMessage": options.signed_message,
+            "signature": options.signature,
         }
 
         if options.max_amount:
@@ -104,24 +109,28 @@ class SessionService:
 
         return self._parse_session(response.data.get("session", response.data))
 
-    async def get(self, session_id: str) -> Optional[WalletSession]:
+    async def get(self, session_id: str, wallet_address: str) -> Optional[WalletSession]:
         """
         Get session by ID
 
         Args:
             session_id: Session identifier
+            wallet_address: Wallet address that owns the session (required for routing)
 
         Returns:
             Wallet session or None if not found
 
         Example:
             ```python
-            session = await client.sessions.get("sess_abc123")
+            session = await client.sessions.get("sess_abc123", "0x1234...")
             if session:
-                print(f"Remaining: {session.remaining_amount}")
+                print(f"Spent: {session.amount_spent}")
             ```
         """
-        response = await self.client.request("GET", f"/v1/sessions/{session_id}")
+        response = await self.client.request(
+            "GET",
+            f"/v1/sessions/{session_id}?wallet={wallet_address}",
+        )
 
         if not response.success:
             if response.error and response.error.get("code") == "NOT_FOUND":
@@ -138,13 +147,18 @@ class SessionService:
         return self._parse_session(response.data.get("session", response.data))
 
     async def validate(
-        self, session_id: str, amount: str, scope: Optional[str] = None
+        self,
+        session_id: str,
+        wallet_address: str,
+        amount: str,
+        scope: Optional[str] = None,
     ) -> SessionValidation:
         """
         Validate session for a specific operation
 
         Args:
             session_id: Session identifier
+            wallet_address: Wallet address that owns the session (required for routing)
             amount: Amount to validate (in smallest unit, e.g., microcents)
             scope: Operation scope to validate (e.g., "memory:store")
 
@@ -155,6 +169,7 @@ class SessionService:
             ```python
             validation = await client.sessions.validate(
                 "sess_abc123",
+                "0x1234...",
                 amount="1000",
                 scope="memory:store"
             )
@@ -165,12 +180,14 @@ class SessionService:
                 print(f"Invalid: {validation.reason}")
             ```
         """
-        body = {"amount": amount}
+        body: Dict[str, Any] = {"amount": amount}
         if scope:
             body["scope"] = scope
 
         response = await self.client.request(
-            "POST", f"/v1/sessions/{session_id}/validate", body
+            "POST",
+            f"/v1/sessions/{session_id}/validate?wallet={wallet_address}",
+            body,
         )
 
         if not response.success or not response.data:
@@ -189,24 +206,28 @@ class SessionService:
             reason=data.get("reason"),
         )
 
-    async def revoke(self, session_id: str) -> bool:
+    async def revoke(self, session_id: str, wallet_address: str) -> bool:
         """
         Revoke a session
 
         Args:
             session_id: Session identifier
+            wallet_address: Wallet address that owns the session (required for routing)
 
         Returns:
             True if successfully revoked
 
         Example:
             ```python
-            revoked = await client.sessions.revoke("sess_abc123")
+            revoked = await client.sessions.revoke("sess_abc123", "0x1234...")
             if revoked:
                 print("Session revoked successfully")
             ```
         """
-        response = await self.client.request("DELETE", f"/v1/sessions/{session_id}")
+        response = await self.client.request(
+            "DELETE",
+            f"/v1/sessions/{session_id}?wallet={wallet_address}",
+        )
 
         if not response.success:
             raise Exception(
@@ -217,40 +238,6 @@ class SessionService:
 
         return True
 
-    async def list_active(self, wallet_address: Optional[str] = None) -> List[WalletSession]:
-        """
-        List active sessions
-
-        Args:
-            wallet_address: Optional wallet address to filter by
-
-        Returns:
-            List of active sessions
-
-        Example:
-            ```python
-            sessions = await client.sessions.list_active()
-            print(f"Active sessions: {len(sessions)}")
-            for s in sessions:
-                print(f"  {s.session_id}: expires {s.expires_at}")
-            ```
-        """
-        endpoint = "/v1/sessions"
-        if wallet_address:
-            endpoint += f"?walletAddress={wallet_address}"
-
-        response = await self.client.request("GET", endpoint)
-
-        if not response.success or not response.data:
-            raise Exception(
-                response.error.get("message", "Failed to list sessions")
-                if response.error
-                else "Failed to list sessions"
-            )
-
-        sessions_data = response.data.get("sessions", [])
-        return [self._parse_session(s) for s in sessions_data]
-
     async def list_by_wallet(self, wallet_address: str) -> List[WalletSession]:
         """
         List sessions for a specific wallet address.
@@ -260,11 +247,18 @@ class SessionService:
 
         Returns:
             List of wallet sessions
+
+        Example:
+            ```python
+            sessions = await client.sessions.list_by_wallet("0x1234...")
+            print(f"Active sessions: {len(sessions)}")
+            for s in sessions:
+                print(f"  {s.session_id}: expires {s.expires_at}")
+            ```
         """
         response = await self.client.request(
             "GET",
             f"/v1/sessions/wallet/{wallet_address}",
-            skip_auth=True,
         )
 
         if not response.success:
@@ -276,47 +270,6 @@ class SessionService:
 
         sessions_data = (response.data or {}).get("sessions", [])
         return [self._parse_session(s) for s in sessions_data]
-
-    async def update(
-        self,
-        session_id: str,
-        wallet_address: str,
-        amount_spent: Optional[str] = None,
-        scope: Optional[List[str]] = None,
-    ) -> WalletSession:
-        """
-        Update a session.
-
-        Args:
-            session_id: Session identifier
-            wallet_address: Wallet address
-            amount_spent: Updated amount spent
-            scope: Updated scope list
-
-        Returns:
-            Updated wallet session
-        """
-        updates: Dict[str, Any] = {}
-        if amount_spent is not None:
-            updates["amountSpent"] = amount_spent
-        if scope is not None:
-            updates["scope"] = scope
-
-        response = await self.client.request(
-            "PUT",
-            f"/v1/sessions/{session_id}?wallet={wallet_address}",
-            updates,
-            skip_auth=True,
-        )
-
-        if not response.success or not response.data:
-            raise Exception(
-                response.error.get("message", "Failed to update session")
-                if response.error
-                else "Failed to update session"
-            )
-
-        return self._parse_session(response.data.get("session", response.data))
 
     async def create_and_activate(self, options: CreateSessionOptions) -> WalletSession:
         """
@@ -341,8 +294,7 @@ class SessionService:
             created_at=data["createdAt"],
             expires_at=data["expiresAt"],
             max_amount=data.get("maxAmount", "0"),
-            spent_amount=data.get("spentAmount", "0"),
-            remaining_amount=data.get("remainingAmount", "0"),
+            amount_spent=data.get("amountSpent", "0"),
             scope=data.get("scope", []),
-            active=data.get("active", True),
+            agent_did=data.get("agentDID"),
         )

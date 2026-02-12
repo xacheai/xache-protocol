@@ -27,8 +27,6 @@ export interface WalletSession {
   maxAmount?: string;
   amountSpent: string;
   agentDID?: string;
-  signedMessage?: string;
-  signature?: string;
 }
 
 /**
@@ -47,10 +45,10 @@ export interface CreateSessionOptions {
   durationSeconds?: number;
   /** Maximum amount the session can spend (in atomic units) */
   maxAmount?: string;
-  /** Signed SIWE/CAIP-122 message for verification */
-  signedMessage?: string;
-  /** Signature of the message */
-  signature?: string;
+  /** Signed SIWE/CAIP-122 message for verification (required by backend) */
+  signedMessage: string;
+  /** Signature of the message (required by backend) */
+  signature: string;
 }
 
 /**
@@ -76,6 +74,8 @@ export interface SessionValidation {
  *   walletAddress: '0x...',
  *   chain: 'evm',
  *   network: 'base-sepolia',
+ *   signedMessage: signedSIWE,
+ *   signature: walletSig,
  *   durationSeconds: 3600,
  *   maxAmount: '10000000', // 10 USDC
  * });
@@ -101,6 +101,8 @@ export class SessionService {
    *   walletAddress: '0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb',
    *   chain: 'evm',
    *   network: 'base-sepolia',
+   *   signedMessage: signedSIWE,
+   *   signature: walletSig,
    *   scope: ['memory:store', 'memory:retrieve'],
    *   durationSeconds: 3600, // 1 hour
    *   maxAmount: '5000000', // 5 USDC
@@ -129,7 +131,6 @@ export class SessionService {
       'POST',
       '/v1/sessions',
       body,
-      { skipAuth: true }
     );
 
     if (!response.success || !response.data?.session) {
@@ -149,7 +150,6 @@ export class SessionService {
       'GET',
       `/v1/sessions/${sessionId}?wallet=${encodeURIComponent(walletAddress)}`,
       undefined,
-      { skipAuth: true }
     );
 
     if (!response.success) {
@@ -170,7 +170,6 @@ export class SessionService {
       'GET',
       `/v1/sessions/wallet/${walletAddress}`,
       undefined,
-      { skipAuth: true }
     );
 
     if (!response.success) {
@@ -178,30 +177,6 @@ export class SessionService {
     }
 
     return response.data?.sessions || [];
-  }
-
-  /**
-   * Update a session (e.g., record spending)
-   * @param sessionId - The session ID
-   * @param walletAddress - The wallet address that owns the session (required for routing)
-   * @param updates - The updates to apply
-   */
-  async update(sessionId: string, walletAddress: string, updates: {
-    amountSpent?: string;
-    scope?: SessionScope[];
-  }): Promise<WalletSession> {
-    const response = await this.client.request<{ session: WalletSession }>(
-      'PUT',
-      `/v1/sessions/${sessionId}?wallet=${encodeURIComponent(walletAddress)}`,
-      updates,
-      { skipAuth: true }
-    );
-
-    if (!response.success || !response.data?.session) {
-      throw new Error(response.error?.message || 'Failed to update session');
-    }
-
-    return response.data.session;
   }
 
   /**
@@ -214,7 +189,6 @@ export class SessionService {
       'DELETE',
       `/v1/sessions/${sessionId}?wallet=${encodeURIComponent(walletAddress)}`,
       undefined,
-      { skipAuth: true }
     );
 
     if (!response.success) {
@@ -254,7 +228,6 @@ export class SessionService {
       'POST',
       `/v1/sessions/${sessionId}/validate?wallet=${encodeURIComponent(walletAddress)}`,
       options || {},
-      { skipAuth: true }
     );
 
     if (!response.success) {
@@ -312,6 +285,8 @@ export class SessionService {
    *   walletAddress: '0x...',
    *   chain: 'evm',
    *   network: 'base-sepolia',
+   *   signedMessage: signedSIWE,
+   *   signature: walletSig,
    * });
    *
    * // All subsequent requests will use this session
