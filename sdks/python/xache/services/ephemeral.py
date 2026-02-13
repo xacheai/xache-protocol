@@ -24,6 +24,7 @@ class EphemeralSession:
     cumulative_cost: float
     active_slots: List[str]
     total_size: int
+    slot_sizes: Dict[str, int] = field(default_factory=dict)
 
 
 @dataclass
@@ -434,4 +435,5 @@ class EphemeralService:
             cumulative_cost=data.get("cumulativeCost", 0),
             active_slots=data.get("activeSlots", []),
             total_size=data.get("totalSize", 0),
+            slot_sizes=data.get("slotSizes", {}),
         )

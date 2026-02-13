@@ -1665,6 +1665,9 @@ async function handleEphemeralStatus(
     `Expires: ${session.expiresAt}`,
     `Active Slots: ${session.activeSlots.length > 0 ? session.activeSlots.join(', ') : 'none'}`,
     `Total Size: ${session.totalSize} bytes`,
+    ...(session.slotSizes && Object.keys(session.slotSizes).length > 0
+      ? [`Slot Sizes: ${Object.entries(session.slotSizes).map(([k, v]) => `${k}=${v}b`).join(', ')}`]
+      : []),
     `Cumulative Cost: $${session.cumulativeCost.toFixed(4)}`,
   ].join('\n');
 }
@@ -1679,7 +1682,7 @@ async function main(): Promise<void> {
   const server = new Server(
     {
       name: 'xache-mcp-server',
-      version: '0.3.0',
+      version: '0.4.0',
     },
     {
       capabilities: {

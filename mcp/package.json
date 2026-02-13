@@ -32,7 +32,7 @@
   "homepage": "https://xache.xyz",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.0",
-    "@xache/sdk": "^5.10.0",
+    "@xache/sdk": "workspace:*",
     "zod": "^3.22.0"
   },
   "devDependencies": {

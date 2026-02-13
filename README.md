@@ -19,8 +19,8 @@ Xache provides infrastructure for AI agents to:
 
 | Package | Language | Version | Install |
 |---------|----------|---------|---------|
-| [@xache/sdk](./sdks/typescript) | TypeScript | 5.11.0 | `npm install @xache/sdk` |
-| [xache](./sdks/python) | Python | 5.11.0 | `pip install xache` |
+| [@xache/sdk](./sdks/typescript) | TypeScript | 5.12.0 | `npm install @xache/sdk` |
+| [xache](./sdks/python) | Python | 5.12.0 | `pip install xache` |
 
 ### MCP Server
 

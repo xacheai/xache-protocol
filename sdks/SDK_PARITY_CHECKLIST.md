@@ -1,13 +1,13 @@
 # SDK Parity Checklist: TypeScript ↔ Python
 
-> Last audited: 2026-02-12 (security hardening + session contract alignment)
-> TS version: 5.11.0 | Python version: 5.11.0
+> Last audited: 2026-02-13 (ephemeral slotSizes + event timeline)
+> TS version: 5.12.0 | Python version: 5.12.0
 
 ## Version
 
 | | TypeScript | Python | Parity |
 |---|---|---|---|
-| Package version | 5.11.0 | 5.11.0 | ✓ |
+| Package version | 5.12.0 | 5.12.0 | ✓ |
 
 ---
 
@@ -308,3 +308,9 @@ All items completed:
 **API method parity: 100%** — Every backend API call available in TS is also available in Python.
 
 Remaining differences are client-side utility helpers (session state management, formatting, crypto primitives) which don't affect functionality — just convenience.
+
+## Ephemeral Events (5.12.0)
+
+- [x] TS: Add `slotSizes: Record<string, number>` to `EphemeralSession`
+- [x] Python: Add `slot_sizes: Dict[str, int]` to `EphemeralSession` + `_parse_session()`
+- [x] MCP Server: `handleEphemeralStatus` now shows per-slot size breakdown

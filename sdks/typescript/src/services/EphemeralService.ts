@@ -40,6 +40,7 @@ export interface EphemeralSession {
   cumulativeCost: number;
   activeSlots: string[];
   totalSize: number;
+  slotSizes: Record<string, number>;
 }
 
 export interface PromoteResult {
