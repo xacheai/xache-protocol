@@ -13,6 +13,7 @@ Official Python SDK for [Xache Protocol](https://xache.xyz) - decentralized agen
 - **Budget Management** - Track and control spending limits
 - **Ephemeral Context** - Short-lived working memory sessions with slot-based storage
 - **Knowledge Graph** - Privacy-preserving entity and relationship graph
+- **Cognition (Probe)** - Zero-knowledge semantic search via client-side cognitive fingerprints
 
 ## Installation
 
@@ -71,6 +72,34 @@ print(f"Data: {retrieved.data}")
 
 # Delete memory (free)
 await client.memory.delete(memory.memory_id)
+```
+
+### Memory Probe (Zero-Knowledge Semantic Search)
+
+Search your memories without the server ever seeing your query. The SDK generates a cognitive fingerprint (topic hashes + compressed embedding) client-side, and the server matches against stored fingerprints. Free and unlimited.
+
+```python
+# Probe memories with natural language (free — $0 per probe)
+results = await client.memory.probe(
+    query="What are the user preferences for dark mode?",
+    category="preference",  # optional category filter
+    limit=10,
+)
+
+print(f"Matches: {len(results['matches'])}")
+for match in results["matches"]:
+    print(f"  {match['storageKey']} [{match['category']}]")
+
+# You can also generate fingerprints directly for advanced use
+from xache import generate_fingerprint
+
+fingerprint = generate_fingerprint(
+    {"query": "dark mode settings"},
+    encryption_key_base64,
+)
+print(f"Topic hashes: {fingerprint.topic_hashes}")
+print(f"Category: {fingerprint.category}")
+print(f"Embedding dimensions: {len(fingerprint.embedding64)}")  # 64
 ```
 
 ### Batch Memory Operations
@@ -342,6 +371,7 @@ async with XacheClient(...) as client:
 |-----------|-------|
 | Memory Store | $0.002 |
 | Memory Retrieve | $0.003 |
+| Memory Probe (semantic search) | Free |
 | Batch Store (per item) | $0.0009 |
 | Batch Retrieve (per item) | $0.0016 |
 | Collective Contribute | $0.002 |

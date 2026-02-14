@@ -14,6 +14,7 @@ Official TypeScript SDK for [Xache Protocol](https://xache.xyz) - decentralized 
 - **Budget Management** - Track and control spending limits with alerts
 - **Ephemeral Context** - Short-lived working memory sessions with slot-based storage
 - **Knowledge Graph** - Privacy-preserving entity and relationship graph
+- **Cognition (Probe)** - Zero-knowledge semantic search via client-side cognitive fingerprints
 
 ## Installation
 
@@ -66,6 +67,35 @@ console.log('Data:', retrieved.data);
 // List and delete
 const list = await client.memory.list({ limit: 20 });
 await client.memory.delete(memory.storageKey);
+```
+
+### Memory Probe (Zero-Knowledge Semantic Search)
+
+Search your memories without the server ever seeing your query. The SDK generates a cognitive fingerprint (topic hashes + compressed embedding) client-side, and the server matches against stored fingerprints. Free and unlimited.
+
+```typescript
+// Probe memories with natural language (free — $0 per probe)
+const results = await client.memory.probe({
+  query: 'What are the user preferences for dark mode?',
+  category: 'preference', // optional category filter
+  limit: 10,
+});
+
+console.log('Matches:', results.matches.length);
+for (const match of results.matches) {
+  console.log(`  ${match.storageKey} [${match.category}]`);
+}
+
+// You can also generate fingerprints directly for advanced use
+import { generateFingerprint } from '@xache/sdk';
+
+const fingerprint = await generateFingerprint(
+  { query: 'dark mode settings' },
+  encryptionKeyBase64,
+);
+console.log('Topic hashes:', fingerprint.topicHashes);
+console.log('Category:', fingerprint.category);
+console.log('Embedding dimensions:', fingerprint.embedding64.length); // 64
 ```
 
 ### Batch Memory Operations
@@ -272,6 +302,7 @@ try {
 |-----------|-------|
 | Memory Store | $0.002 |
 | Memory Retrieve | $0.003 |
+| Memory Probe (semantic search) | Free |
 | Batch Store (per item) | $0.0009 |
 | Batch Retrieve (per item) | $0.0016 |
 | Collective Contribute | $0.002 |

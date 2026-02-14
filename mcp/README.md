@@ -140,11 +140,10 @@ List stored memories.
 - `limit` (optional): Max results (default 20)
 
 #### `xache_memory_probe`
-Zero-knowledge semantic search over your memory space. Uses cognitive fingerprints (topic hashes + compressed embeddings) — no plaintext leaves your device. Free and unlimited.
-- `topicHashes` (required): 1-10 topic hashes to search
-- `embedding64` (optional): 64-dimensional compressed embedding
-- `category` (optional): Filter by category
-- `limit` (optional): Max results (default 5)
+Zero-knowledge semantic search over your memory space. Cognitive fingerprints (topic hashes + compressed embeddings) are generated locally from your query — no plaintext leaves your device. Free and unlimited.
+- `query` (required): What to search for in your memories (natural language)
+- `category` (optional): Cognitive category filter (preference, fact, event, procedure, relationship, observation, decision, goal, constraint, reference, summary, handoff, pattern, feedback)
+- `limit` (optional): Max results (default 10)
 
 ### Ephemeral Context
 

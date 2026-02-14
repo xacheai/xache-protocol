@@ -1,13 +1,13 @@
 # SDK Parity Checklist: TypeScript ↔ Python
 
-> Last audited: 2026-02-13 (ephemeral slotSizes + event timeline)
-> TS version: 5.12.0 | Python version: 5.12.0
+> Last audited: 2026-02-14 (cognitive fingerprint + probe parity)
+> TS version: 5.13.0 | Python version: 5.13.0
 
 ## Version
 
 | | TypeScript | Python | Parity |
 |---|---|---|---|
-| Package version | 5.12.0 | 5.12.0 | ✓ |
+| Package version | 5.13.0 | 5.13.0 | ✓ |
 
 ---
 
@@ -238,6 +238,15 @@ Local-only utility methods (no HTTP calls). Lower priority for parity.
 | deriveKeyFromPassword() | ✓ | ✗ | ⚠️ TS-only |
 | generateNonce() | ✓ | ✗ | ⚠️ TS-only |
 | generateSalt() | ✓ | ✗ | ⚠️ TS-only |
+| **Cognitive Fingerprint** | | | |
+| generateFingerprint() | ✓ | ✓ | ✓ |
+| deriveCogSalt() | ✓ | ✓ | ✓ |
+| deriveProjectionSeed() | ✓ | ✓ | ✓ |
+| generateTopicHashes() | ✓ | ✓ | ✓ |
+| extractConcepts() | ✓ | ✓ | ✓ |
+| classifyCategory() | ✓ | ✓ | ✓ |
+| flattenToText() | ✓ | ✓ | ✓ |
+| generateEmbedding64() | ✓ | ✓ | ✓ |
 | **Wallet** | | | |
 | WalletGenerator.generate() | ✓ | ✓ | ✓ |
 | WalletGenerator.fromMnemonic() | ✓ | ✓ | ✓ |
@@ -314,3 +323,12 @@ Remaining differences are client-side utility helpers (session state management,
 - [x] TS: Add `slotSizes: Record<string, number>` to `EphemeralSession`
 - [x] Python: Add `slot_sizes: Dict[str, int]` to `EphemeralSession` + `_parse_session()`
 - [x] MCP Server: `handleEphemeralStatus` now shows per-slot size breakdown
+
+## Cognitive Fingerprint / Probe (5.13.0)
+
+- [x] TS: Export `generateFingerprint` + `CognitiveFingerprint` from package root
+- [x] Python: Create `xache.crypto.fingerprint` module (algorithm-compatible with TS)
+- [x] Python: Add `MemoryService.probe()` method (client-side fingerprint → server GIN match → batch decrypt)
+- [x] Python: Export `generate_fingerprint`, `CognitiveFingerprint`, `CognitiveCategory` from package root
+- [x] API Gateway: Fix probe route to support owner→agent delegation via `verifyMemoryAccess()`
+- [x] Console: Rewrite CognitionTab from analytics dashboard to zero-knowledge probe search UI

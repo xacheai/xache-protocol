@@ -19,14 +19,14 @@ Xache provides infrastructure for AI agents to:
 
 | Package | Language | Version | Install |
 |---------|----------|---------|---------|
-| [@xache/sdk](./sdks/typescript) | TypeScript | 5.12.0 | `npm install @xache/sdk` |
-| [xache](./sdks/python) | Python | 5.12.0 | `pip install xache` |
+| [@xache/sdk](./sdks/typescript) | TypeScript | 5.13.0 | `npm install @xache/sdk` |
+| [xache](./sdks/python) | Python | 5.13.0 | `pip install xache` |
 
 ### MCP Server
 
 | Package | Version | Install |
 |---------|---------|---------|
-| [@xache/mcp-server](./mcp) | 0.8.0 | `npm install -g @xache/mcp-server` |
+| [@xache/mcp-server](./mcp) | 0.8.1 | `npm install -g @xache/mcp-server` |
 
 Works with Claude Desktop, Claude Code, Cursor, OpenClaw, and any MCP-compatible client.
 
@@ -96,6 +96,15 @@ console.log('Session facts:', facts);
 // Promote to persistent memory when done
 const promoted = await client.ephemeral.promoteSession(session.sessionKey);
 console.log('Memories created:', promoted.memoriesCreated);
+
+// Zero-knowledge semantic search (free, no plaintext leaves your device)
+const matches = await client.memory.probe({
+  query: 'What are the user preferences?',
+  category: 'preference',
+  limit: 10,
+});
+
+console.log('Matches:', matches.matches.length);
 ```
 
 ### Python
@@ -152,6 +161,15 @@ async with XacheClient(
     # Promote to persistent memory when done
     promoted = await client.ephemeral.promote_session(session.session_key)
     print(f"Memories created: {promoted.memories_created}")
+
+    # Zero-knowledge semantic search (free, no plaintext leaves your device)
+    matches = await client.memory.probe(
+        query="What are the user preferences?",
+        category="preference",
+        limit=10,
+    )
+
+    print(f"Matches: {len(matches['matches'])}")
 ```
 
 ### MCP Server (Claude Desktop / Cursor)

@@ -652,3 +652,94 @@ class MemoryService:
 
         result: Dict[str, Any] = response.data
         return result
+
+    # ========== Cognitive Probe (Zero-Knowledge Semantic Search) ==========
+
+    async def probe(
+        self,
+        query: str,
+        category: Optional[str] = None,
+        limit: int = 10,
+        scope: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        """
+        Probe memories using cognitive fingerprints (zero-knowledge semantic search).
+        Free — no payment required.
+
+        Generates a cognitive fingerprint client-side from the query, sends only
+        hashed shadows to the server, then batch retrieves + decrypts matches.
+
+        Args:
+            query: Natural language query (plaintext never leaves client)
+            category: Optional cognitive category filter
+            limit: Max results (default 10, max 50)
+            scope: Optional subject scope filter
+
+        Returns:
+            Dict with matches list and total count. Each match has storageKey,
+            category, and optionally decrypted data.
+
+        Example:
+            ```python
+            results = await client.memory.probe(
+                query="What does the user prefer for dark mode?",
+                category="preference",
+                limit=5,
+            )
+            for match in results["matches"]:
+                print(f"  [{match['category']}] {match['storageKey']}")
+                if match.get("data"):
+                    print(f"    {match['data']}")
+            ```
+        """
+        from ..crypto.fingerprint import generate_fingerprint
+
+        key = await self._get_encryption_key()
+        import base64
+        key_b64 = base64.b64encode(key).decode("ascii")
+
+        fingerprint = generate_fingerprint({"query": query}, key_b64)
+
+        body: Dict[str, Any] = {
+            "topicHashes": fingerprint.topic_hashes,
+            "embedding64": fingerprint.embedding64,
+            "version": fingerprint.version,
+            "limit": limit,
+        }
+        if category:
+            body["category"] = category
+        if scope:
+            body["scope"] = scope
+
+        response = await self.client.request("POST", "/v1/memory/probe", body)
+
+        if not response.success or not response.data:
+            return {"matches": [], "total": 0}
+
+        matches_raw = response.data.get("matches", [])
+
+        # Batch retrieve + decrypt matched memories
+        if matches_raw:
+            keys = [m["storageKey"] for m in matches_raw]
+            try:
+                retrieved = await self.retrieve_batch(storage_keys=keys)
+                data_map: Dict[str, Any] = {}
+                for result in retrieved.results:
+                    if result.memory_id and result.data:
+                        data_map[result.memory_id] = result.data
+            except Exception:
+                data_map = {}
+
+            return {
+                "matches": [
+                    {
+                        "storageKey": m["storageKey"],
+                        "category": m.get("category", "unknown"),
+                        "data": data_map.get(m["storageKey"]),
+                    }
+                    for m in matches_raw
+                ],
+                "total": response.data.get("total", len(matches_raw)),
+            }
+
+        return {"matches": [], "total": 0}

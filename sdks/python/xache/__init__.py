@@ -25,7 +25,7 @@ Example:
     ```
 """
 
-__version__ = "5.9.0"
+__version__ = "5.13.0"
 
 # Main client
 from .client import XacheClient
@@ -173,6 +173,13 @@ from .crypto.wallet import (
     WalletGenerationOptions,
 )
 
+# Cognitive Fingerprint (zero-knowledge semantic search)
+from .crypto.fingerprint import (
+    CognitiveFingerprint,
+    CognitiveCategory,
+    generate_fingerprint,
+)
+
 __all__ = [
     "__version__",
     # Main client
@@ -298,4 +305,8 @@ __all__ = [
     "GraphService",
     # Ephemeral Context
     "EphemeralService",
+    # Cognitive Fingerprint
+    "CognitiveFingerprint",
+    "CognitiveCategory",
+    "generate_fingerprint",
 ]

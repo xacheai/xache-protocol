@@ -286,6 +286,10 @@ export {
 
 export type { EncryptionKeyPair, EncryptedData } from './crypto/encryption';
 
+// Cognitive fingerprint generation (client-side zero-knowledge semantic search)
+export { generateFingerprint } from './crypto/fingerprint';
+export type { CognitiveFingerprint } from './crypto/fingerprint';
+
 // Subject Keys utilities (for multi-tenant memory isolation)
 export {
   deriveSubjectId,
