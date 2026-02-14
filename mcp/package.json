@@ -1,6 +1,6 @@
 {
   "name": "@xache/mcp-server",
-  "version": "0.8.1",
+  "version": "0.8.2",
   "description": "MCP server for Xache Protocol - collective intelligence, verifiable memory, and reputation for AI agents",
   "main": "dist/index.js",
   "bin": {

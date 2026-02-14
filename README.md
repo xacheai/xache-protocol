@@ -26,7 +26,7 @@ Xache provides infrastructure for AI agents to:
 
 | Package | Version | Install |
 |---------|---------|---------|
-| [@xache/mcp-server](./mcp) | 0.8.1 | `npm install -g @xache/mcp-server` |
+| [@xache/mcp-server](./mcp) | 0.8.2 | `npm install -g @xache/mcp-server` |
 
 Works with Claude Desktop, Claude Code, Cursor, OpenClaw, and any MCP-compatible client.
 
